@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Poll Results - Periodic Issue Polling</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com" crossorigin/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link rel="dns-prefetch" href="https://www.gstatic.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<script src="js/firebase-config.js"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: { primary: "#6366f1" },
+        fontFamily: { display: ["Outfit", "sans-serif"] },
+      },
+    },
+  }
+</script>
+<link rel="stylesheet" href="css/neumorphism.css"/>
+<script src="js/sidebar-cache.js"></script>
+</head>
+<body class="font-display transition-colors duration-300 antialiased overflow-hidden">
+<div class="flex h-[100dvh] w-full">
+
+  <!-- ─── Sidebar Navigation ─── -->
+  <nav class="hidden md:flex w-72 flex-col justify-between h-full relative z-20 neu-sidebar">
+    <div class="p-8">
+      <div class="flex items-center gap-3 mb-12">
+        <div class="w-10 h-10 neu-raised rounded-xl text-primary flex items-center justify-center">
+          <span class="material-symbols-outlined text-2xl" style="font-variation-settings:'FILL' 1,'wght' 600,'GRAD' 0,'opsz' 24;">poll</span>
+        </div>
+        <div class="flex flex-col">
+          <h1 class="text-xl font-bold tracking-tight text-slate-800">Issue Polling</h1>
+          <span class="text-xs text-slate-500 font-medium tracking-wide uppercase">Workspace</span>
+        </div>
+      </div>
+      <div class="flex flex-col gap-3">
+        <a class="flex items-center gap-4 px-4 py-3 neu-nav-item" href="dashboard.html">
+          <span class="material-symbols-outlined">dashboard</span>
+          <span class="font-medium">Dashboard</span>
+        </a>
+        <a class="flex items-center gap-4 px-4 py-3 neu-nav-item" href="submit-issue.html">
+          <span class="material-symbols-outlined">add_circle</span>
+          <span class="font-medium">Submit Issue</span>
+        </a>
+        <a class="flex items-center gap-4 px-4 py-3 neu-nav-item" href="my-issues.html">
+          <span class="material-symbols-outlined">archive</span>
+          <span class="font-medium">My Issues</span>
+        </a>
+        <a class="flex items-center gap-4 px-4 py-3 neu-nav-active" href="active-polls.html">
+          <span class="material-symbols-outlined">checklist</span>
+          <span class="font-medium">Active Polls</span>
+          <span id="polls-badge" class="ml-auto bg-primary/10 text-primary text-xs font-bold px-2 py-0.5 rounded-full hidden">0</span>
+        </a>
+        <a class="flex items-center gap-4 px-4 py-3 neu-nav-item" href="profile.html">
+          <span class="material-symbols-outlined">person</span>
+          <span class="font-medium">My Profile</span>
+        </a>
+      </div>
+    </div>
+    <div class="p-6 flex flex-col gap-2">
+      <button onclick="handleLogout()" class="flex items-center gap-4 px-4 py-3 neu-nav-item text-red-500 hover:text-red-600 transition-all w-full">
+        <span class="material-symbols-outlined">logout</span>
+        <span class="font-medium">Sign Out</span>
+      </button>
+      <div class="mt-4 flex items-center gap-3 px-4 py-3 neu-pressed">
+        <div id="user-avatar" class="h-10 w-10 neu-raised rounded-full text-primary flex items-center justify-center text-sm font-bold overflow-hidden">?</div>
+        <div class="flex flex-col overflow-hidden">
+          <p id="user-name-sidebar" class="text-sm font-semibold truncate text-slate-800">Loading…</p>
+          <p id="user-role-sidebar" class="text-xs text-slate-500 truncate">Premium Member</p>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ─── Main ─── -->
+  <main class="flex-1 h-full overflow-y-auto relative">
+    <div class="absolute top-0 right-0 w-[600px] h-[600px] rounded-full pointer-events-none -translate-y-1/2 translate-x-1/3 blur-3xl opacity-20" style="background:radial-gradient(circle,rgba(99,102,241,0.3),transparent 70%)"></div>
+    <div class="max-w-4xl mx-auto px-6 py-8 pb-32 md:pb-12 md:px-12 md:py-12 flex flex-col h-full relative z-10">
+      
+      <!-- Loading State -->
+      <div id="loading-state" class="flex flex-col items-center justify-center py-24 animate-pulse">
+        <div class="w-16 h-16 neu-raised rounded-full text-primary flex items-center justify-center mb-4">
+          <span class="material-symbols-outlined text-3xl animate-spin">refresh</span>
+        </div>
+        <p class="text-slate-500 font-bold uppercase tracking-widest text-sm">Loading Results...</p>
+      </div>
+
+      <!-- Results Content -->
+      <div id="results-content" class="hidden animate-slide-up">
+        <header class="mb-10 flex flex-col sm:flex-row sm:items-end justify-between gap-6">
+          <div class="flex-1">
+            <div class="flex items-center gap-3 mb-4">
+              <a href="active-polls.html" class="w-10 h-10 neu-raised rounded-xl flex items-center justify-center text-slate-600 hover:text-primary transition-all">
+                <span class="material-symbols-outlined">arrow_back</span>
+              </a>
+              <span id="poll-status-badge" class="neu-badge"></span>
+            </div>
+            <h2 id="poll-title" class="text-4xl font-black text-slate-800 tracking-tight mb-2"></h2>
+            <p id="poll-description" class="text-slate-600 text-lg font-medium"></p>
+          </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <!-- Main Results -->
+          <div class="lg:col-span-2 space-y-6">
+            <div class="neu-card p-8">
+              <h3 class="text-sm font-extrabold text-slate-500 uppercase tracking-widest mb-8">Live Voting Distribution</h3>
+              <div id="results-bars" class="space-y-8">
+                <!-- Bar item placeholder -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Stats Sidebar -->
+          <div class="space-y-6">
+            <div class="neu-card p-6 flex flex-col gap-6">
+              <div class="flex items-center gap-4">
+                <div class="w-12 h-12 neu-pressed rounded-2xl flex items-center justify-center text-primary">
+                  <span class="material-symbols-outlined">groups</span>
+                </div>
+                <div>
+                  <p id="total-votes-num" class="text-2xl font-black text-slate-800 tracking-tight">0</p>
+                  <p class="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">Total Votes</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-4">
+                <div class="w-12 h-12 neu-pressed rounded-2xl flex items-center justify-center text-emerald-500">
+                  <span class="material-symbols-outlined">trending_up</span>
+                </div>
+                <div>
+                  <p id="leader-pct" class="text-2xl font-black text-slate-800 tracking-tight">0%</p>
+                  <p class="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">Lead Consensus</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-4">
+                <div class="w-12 h-12 neu-pressed rounded-2xl flex items-center justify-center text-amber-500">
+                  <span class="material-symbols-outlined">list</span>
+                </div>
+                <div>
+                  <p id="options-count" class="text-2xl font-black text-slate-800 tracking-tight">0</p>
+                  <p class="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">Poll Options</p>
+                </div>
+              </div>
+            </div>
+
+            <article class="neu-card p-6 bg-primary/5">
+              <h4 class="font-bold text-slate-800 mb-2 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary">info</span>
+                Analysis
+              </h4>
+              <p class="text-xs text-slate-500 leading-relaxed font-medium">Results are updated in real-time. Your participation helps drive better workplace decisions.</p>
+            </article>
+          </div>
+        </div>
+      </div>
+
+      <!-- Error State -->
+      <div id="error-state" class="hidden text-center py-20 flex flex-col items-center">
+        <div class="w-20 h-20 neu-raised rounded-full text-red-500 flex items-center justify-center mb-6">
+          <span class="material-symbols-outlined text-4xl">error</span>
+        </div>
+        <h3 class="text-xl font-bold text-slate-800 mb-2">Poll Not Found</h3>
+        <p class="text-slate-500 mb-8 max-w-xs mx-auto">This poll might have been removed or you may have followed a broken link.</p>
+        <a href="active-polls.html" class="neu-btn px-8 py-3 bg-primary text-white font-bold rounded-full">Back to Polls</a>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ─── Mobile Bottom Nav ─── -->
+  <nav class="md:hidden neu-bottom-nav fixed bottom-0 w-full flex justify-around items-center h-16 px-4 z-50 pb-safe">
+    <a href="dashboard.html" class="neu-bottom-link flex flex-col items-center justify-center w-16 h-full">
+      <span class="material-symbols-outlined text-2xl mb-1">dashboard</span>
+      <span class="text-[10px] font-bold">Home</span>
+    </a>
+    <a href="submit-issue.html" class="neu-bottom-link flex flex-col items-center justify-center w-16 h-full">
+      <span class="material-symbols-outlined text-2xl mb-1">add_circle</span>
+      <span class="text-[10px] font-bold">Submit</span>
+    </a>
+    <a href="my-issues.html" class="neu-bottom-link flex flex-col items-center justify-center w-16 h-full">
+      <span class="material-symbols-outlined text-2xl mb-1">archive</span>
+      <span class="text-[10px] font-bold">Issues</span>
+    </a>
+    <a href="active-polls.html" class="neu-bottom-link neu-nav-active flex flex-col items-center justify-center w-16 h-full relative">
+      <span class="material-symbols-outlined text-2xl mb-1">checklist</span>
+      <span class="text-[10px] font-bold">Polls</span>
+      <span id="polls-mobile-badge" class="absolute top-1 right-2 w-4 h-4 bg-primary text-white text-[9px] font-bold flex items-center justify-center rounded-full hidden">0</span>
+    </a>
+    <a href="profile.html" class="neu-bottom-link flex flex-col items-center justify-center w-16 h-full">
+      <span class="material-symbols-outlined text-2xl mb-1">person</span>
+      <span class="text-[10px] font-bold">Profile</span>
+    </a>
+  </nav>
+</div>
+
+<script>
+  const db = firebase.firestore();
+  async function loadPollResults() {
+    const params = new URLSearchParams(window.location.search);
+    const pollId = params.get('id');
+    if (!pollId) { showState('error'); return; }
+    try {
+      const pollDoc = await db.collection('polls').doc(pollId).get();
+      if (!pollDoc.exists) { showState('error'); return; }
+      const poll = pollDoc.data();
+      document.getElementById('poll-title').textContent = poll.title;
+      document.getElementById('poll-description').textContent = poll.description || '';
+      const badge = document.getElementById('poll-status-badge');
+      badge.textContent = poll.isActive ? 'Live Poll' : 'Closed';
+      badge.className = `neu-badge ${poll.isActive ? 'text-emerald-600 bg-emerald-50' : 'text-slate-500 bg-slate-50'}`;
+      
+      const votesSnap = await db.collection('polls').doc(pollId).collection('votes').get();
+      const totalVotes = votesSnap.size;
+      document.getElementById('total-votes-num').textContent = totalVotes;
+      document.getElementById('options-count').textContent = poll.options.length;
+      
+      const voteCounts = {};
+      poll.options.forEach(opt => voteCounts[opt] = 0);
+      votesSnap.forEach(doc => {
+        const choice = doc.data().choice;
+        if (voteCounts.hasOwnProperty(choice)) voteCounts[choice]++;
+      });
+      
+      let maxVotes = 0;
+      poll.options.forEach(opt => { if (voteCounts[opt] > maxVotes) maxVotes = voteCounts[opt]; });
+      const leaderPct = totalVotes > 0 ? Math.round((maxVotes / totalVotes) * 100) : 0;
+      document.getElementById('leader-pct').textContent = `${leaderPct}%`;
+      
+      const container = document.getElementById('results-bars');
+      container.innerHTML = poll.options.map(opt => {
+        const count = voteCounts[opt];
+        const pct = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0;
+        return `
+          <div class="space-y-3">
+            <div class="flex justify-between items-end">
+              <span class="font-bold text-slate-700">${opt}</span>
+              <span class="text-sm font-black text-primary">${count} votes (${pct}%)</span>
+            </div>
+            <div class="h-4 w-full neu-pressed rounded-full overflow-hidden p-1">
+              <div class="h-full bg-primary rounded-full transition-all duration-1000" style="width: ${pct}%"></div>
+            </div>
+          </div>`;
+      }).join('');
+      showState('results');
+    } catch (e) { console.error(e); showState('error'); }
+  }
+
+  function showState(s) {
+    document.getElementById('loading-state').classList.toggle('hidden', s !== 'loading');
+    document.getElementById('results-content').classList.toggle('hidden', s !== 'results');
+    document.getElementById('error-state').classList.toggle('hidden', s !== 'error');
+  }
+
+  firebase.auth().onAuthStateChanged(user => {
+    if (!user) { window.location.href = 'index.html'; return; }
+    const name = user.displayName || user.email.split('@')[0];
+    document.getElementById('user-name-sidebar').textContent = name;
+    db.collection('users').doc(user.uid).get().then(doc => {
+      if (doc.exists) {
+        const roleText = doc.data().role === 'USER' ? 'Premium Member' : doc.data().role;
+        document.getElementById('user-role-sidebar').textContent = roleText;
+        const avatarEl = document.getElementById('user-avatar');
+        if (doc.data().avatarUrl) avatarEl.innerHTML = `<img src="${doc.data().avatarUrl}" class="w-full h-full object-cover">`;
+        else avatarEl.textContent = name.slice(0, 2).toUpperCase();
+        saveSidebarCache(name, roleText, doc.data().avatarUrl || null);
+      }
+    });
+    loadPollResults();
+    updatePollsBadge();
+  });
+
+  function handleLogout() { clearSidebarCache(); firebase.auth().signOut().then(() => window.location.href = 'index.html'); }
+
+  async function updatePollsBadge() {
+    try {
+      const snap = await db.collection('polls').where('isActive', '==', true).get();
+      const badge = document.getElementById('polls-badge');
+      const mobileBadge = document.getElementById('polls-mobile-badge');
+      if (snap.size > 0) {
+        if (badge) { badge.textContent = snap.size; badge.classList.remove('hidden'); }
+        if (mobileBadge) { mobileBadge.textContent = snap.size; mobileBadge.classList.remove('hidden'); }
+      } else {
+        if (badge) badge.classList.add('hidden');
+        if (mobileBadge) mobileBadge.classList.add('hidden');
+      }
+    } catch (e) { console.error(e); }
+  }
+</script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch(err => {
+        console.log('SW registration failed: ', err);
+      });
+    });
+  }
+</script>
+</body>
+</html>

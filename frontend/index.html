@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>FeedbackPortal - Sign In</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<script src="js/firebase-config.js"></script>
+<script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                colors: { primary: "#6366f1" },
+                fontFamily: { "display": ["Outfit", "sans-serif"], "body": ["Inter", "sans-serif"] },
+                borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+            },
+        },
+    }
+</script>
+<style>
+    body { font-family: 'Outfit', sans-serif; background: var(--gradient-body); color: var(--light-text); min-height: 100dvh; }
+    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    
+    .spinner { display:inline-block;width:24px;height:24px;border:3px solid rgba(99,102,241,0.2);border-top-color:#6366f1;border-radius:50%;animation:spin 1s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+
+    .hero-bg {
+        background: var(--gradient-sidebar);
+        position: relative; overflow: hidden;
+        border: 1px solid var(--light-border);
+        box-shadow: var(--shadow-clay);
+    }
+    .hero-bg::before {
+        content: ''; position: absolute; inset: 0;
+        background: radial-gradient(ellipse at 20% 50%, rgba(99,102,241,0.1) 0%, transparent 60%),
+                    radial-gradient(ellipse at 80% 20%, rgba(139,92,246,0.08) 0%, transparent 50%);
+    }
+
+    /* Content Cards */
+    .content-card {
+        background: #ffffff;
+        border: 1px solid var(--light-border);
+        border-radius: var(--light-radius);
+        box-shadow: var(--shadow-clay);
+        padding: 2.5rem; 
+    }
+
+    /* Inputs */
+    .neu-input-custom {
+        background: var(--gradient-body);
+        border: 1px solid var(--light-border);
+        box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+        color: var(--light-text);
+        border-radius: var(--light-radius-sm);
+        transition: all 0.2s;
+        font-family: 'Inter', sans-serif;
+    }
+    .neu-input-custom:focus {
+        background: #ffffff;
+        border-color: var(--light-accent);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        outline: none;
+    }
+    .neu-input-custom::placeholder { color: var(--light-text-light); }
+
+    .btn-submit {
+        background: var(--gradient-primary);
+        color: rgb(19, 96, 204); border: none;
+        box-shadow: 0 4px 12px rgba(99,102,241,0.3);
+        transition: all 0.2s;
+    }
+    .btn-submit:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(99,102,241,0.4);
+    }
+    .btn-submit:active:not(:disabled) { transform: scale(0.98); }
+
+    .btn-google {
+        background: #ffffff;
+        border: 1px solid var(--light-border);
+        color: var(--light-text);
+        box-shadow: var(--shadow-clay);
+        transition: all 0.2s;
+    }
+    .btn-google:hover {
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-clay-hover);
+        border-color: #0d2954;
+    }
+</style>
+<link rel="stylesheet" href="css/neumorphism.css"/>
+</head>
+<body class="flex flex-col overflow-x-hidden pt-8 pb-12 sm:pt-12 sm:pb-20 relative">
+
+<!-- Alert Banner -->
+<div id="alert-banner" class="hidden fixed top-6 left-1/2 -translate-x-1/2 z-[100] max-w-sm w-[90%] sm:w-full animate-slide-up">
+    <div id="alert-inner" class="bg-white !p-4 flex items-center gap-3 text-sm font-semibold rounded-xl w-full shadow-lg border">
+    </div>
+</div>
+
+<div class="relative flex h-full min-h-screen w-full flex-col max-w-[480px] mx-auto px-4 sm:px-6">
+    <!-- Top App Bar -->
+    <div class="flex items-center justify-between pb-6 animate-slide-up">
+        <h2 class="text-[var(--light-text)] text-lg font-bold leading-tight tracking-tight flex items-center gap-2">
+            <span class="material-symbols-outlined text-[var(--light-accent)]" style="font-variation-settings: 'FILL' 1;">category</span>
+        </h2>
+        <a href="admin-login.html" class="flex items-center justify-center gap-2 text-[var(--light-accent)] font-semibold text-sm hover:opacity-80 transition-opacity bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100">
+            Admin <span class="material-symbols-outlined text-[18px]">admin_panel_settings</span>
+        </a>
+    </div>
+
+    <!-- Hero Section -->
+    <div class="hero-bg rounded-2xl min-h-[180px] sm:min-h-[220px] mb-8 animate-slide-up p-6 sm:p-8 flex flex-col justify-between">
+        <div class="relative z-10 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-xl flex items-center justify-center bg-[var(--light-accent)] text-white shadow-lg shadow-indigo-200">
+                    <span class="material-symbols-outlined text-2xl" style="font-variation-settings:'FILL' 1">view_in_ar</span>
+                </div>
+                <div>
+                    <p class="text-[var(--light-text)] font-bold">Customer Space</p>
+                    <p class="text-[var(--light-text-muted)] text-xs">Feedback &amp; Polling</p>
+                </div>
+            </div>
+        </div>
+        <div class="relative z-10 mt-6">
+            <h2 class="text-2xl font-extrabold text-[var(--light-text)] leading-tight">Voice Your Experience</h2>
+            <p class="text-[var(--light-text-muted)] text-sm mt-1 font-body">share your feedback and suggestions to help us improve.</p>
+        </div>
+    </div>
+
+    <!-- Content Area -->
+    <div class="content-card relative z-20 -mt-12 mx-2 sm:mx-0 pb-8 animate-slide-up" style="animation-delay: 0.1s;">
+        
+        <!-- LOGIN VIEW -->
+        <div id="view-login">
+            <h1 class="text-[var(--light-text)] tracking-tight text-3xl font-extrabold leading-tight pb-1">Sign In</h1>
+            <p class="text-[var(--light-text-muted)] text-sm font-medium leading-normal pb-8">Welcome back to your portal</p>
+            
+            <form onsubmit="handleLogin(event)" class="space-y-5" novalidate>
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-[var(--light-text)] text-sm font-bold px-1">Email Address</label>
+                    <div class="relative">
+                        <input id="login-email" class="w-full neu-input-custom h-14 !pl-14 pr-4 text-base" placeholder="name@example.com" type="email" autocomplete="email" required/>
+                        <span class="material-symbols-outlined absolute left-4 top-4 text-[var(--light-text-light)]">mail</span>
+                    </div>
+                </div>
+                
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-[var(--light-text)] text-sm font-bold px-1">Password</label>
+                    <div class="relative">
+                        <input id="login-password" class="w-full neu-input-custom h-14 !pl-14 pr-12 text-base" placeholder="••••••••" type="password" autocomplete="current-password" required/>
+                        <span class="material-symbols-outlined absolute left-4 top-4 text-[var(--light-text-light)]">lock</span>
+                        <button class="absolute right-4 top-4 text-[var(--light-text-light)] hover:text-[var(--light-text)] focus:outline-none" type="button" onclick="togglePassword('login-password', this)">
+                            <span class="material-symbols-outlined">visibility</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="mt-8 space-y-4">
+                    <button id="btn-login" type="submit" class="w-full h-14 btn-submit rounded-xl text-lg font-bold flex items-center justify-center relative overflow-hidden" style="background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%) !important; color: white !important;">
+                        <span id="txt-login" class="flex items-center">Sign In</span>
+                    </button>
+                    
+                    <div class="relative flex items-center py-4">
+                        <div class="flex-grow border-t border-[var(--light-border)]"></div>
+                        <span class="flex-shrink mx-4 text-[var(--light-text-light)] text-xs font-bold uppercase tracking-wider">Or continue with</span>
+                        <div class="flex-grow border-t border-[var(--light-border)]"></div>
+                    </div>
+                    
+                    <button type="button" onclick="handleGoogleLogin()" class="w-full h-14 rounded-xl font-bold flex items-center justify-center gap-3 btn-google">
+                        <svg class="w-5 h-5" viewBox="0 0 24 24">
+                            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"></path>
+                            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"></path>
+                            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"></path>
+                            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"></path>
+                        </svg>
+                        Google
+                    </button>
+                </div>
+            </form>
+            
+            <div class="pt-8 text-center pb-2">
+                <p class="text-[var(--light-text-muted)] text-sm font-medium">
+                    Don't have an account? 
+                    <a class="text-[var(--light-accent)] font-bold hover:underline cursor-pointer" onclick="showView('register')">Register</a>
+                </p>
+            </div>
+        </div>
+
+        <!-- REGISTER VIEW -->
+        <div id="view-register" class="hidden">
+            <h1 class="text-[var(--light-text)] tracking-tight text-3xl font-bold leading-tight pb-1">Register</h1>
+            <p class="text-[var(--light-text-muted)] text-sm font-medium leading-normal pb-8">Create your customer portal account</p>
+            
+            <form onsubmit="handleRegister(event)" class="space-y-5" novalidate>
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-[var(--light-text)] text-sm font-bold px-1">Full Name</label>
+                    <div class="relative">
+                        <input id="reg-name" class="w-full neu-input-custom h-14 !pl-14 pr-4 text-base" placeholder="John Doe" type="text" autocomplete="name" required/>
+                        <span class="material-symbols-outlined absolute left-4 top-4 text-[var(--light-text-light)]">person</span>
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-[var(--light-text)] text-sm font-bold px-1">Email Address</label>
+                    <div class="relative">
+                        <input id="reg-email" class="w-full neu-input-custom h-14 !pl-14 pr-4 text-base" placeholder="name@example.com" type="email" autocomplete="email" required/>
+                        <span class="material-symbols-outlined absolute left-4 top-4 text-[var(--light-text-light)]">mail</span>
+                    </div>
+                </div>
+                
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-[var(--light-text)] text-sm font-bold px-1">Password</label>
+                    <div class="relative">
+                        <input id="reg-password" class="w-full neu-input-custom h-14 !pl-14 pr-12 text-base" placeholder="••••••••" type="password" autocomplete="new-password" required/>
+                        <span class="material-symbols-outlined absolute left-4 top-4 text-[var(--light-text-light)]">lock</span>
+                        <button class="absolute right-4 top-4 text-[var(--light-text-light)] hover:text-[var(--light-text)] focus:outline-none" type="button" onclick="togglePassword('reg-password', this)">
+                            <span class="material-symbols-outlined">visibility</span>
+                        </button>
+                    </div>
+                    <p class="text-xs text-[var(--light-text-light)] px-1 font-medium">Must be at least 8 characters.</p>
+                </div>
+
+                <div class="mt-8 space-y-4">
+                    <button id="btn-register" type="submit" class="w-full h-14 btn-submit rounded-xl text-lg font-bold flex items-center justify-center" style="background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%) !important; color: white !important;">
+                        <span id="txt-register" class="flex items-center">Create Account</span>
+                    </button>
+                    
+                    <div class="relative flex items-center py-4">
+                        <div class="flex-grow border-t border-[var(--light-border)]"></div>
+                        <span class="flex-shrink mx-4 text-[var(--light-text-light)] text-xs font-bold uppercase tracking-wider">Or register with</span>
+                        <div class="flex-grow border-t border-[var(--light-border)]"></div>
+                    </div>
+                    
+                    <button type="button" onclick="handleGoogleLogin()" class="w-full h-14 rounded-xl font-bold flex items-center justify-center gap-3 btn-google">
+                        <svg class="w-5 h-5" viewBox="0 0 24 24">
+                            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"></path>
+                            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"></path>
+                            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"></path>
+                            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"></path>
+                        </svg>
+                        Google
+                    </button>
+                </div>
+            </form>
+            
+            <div class="pt-8 text-center pb-2">
+                <p class="text-[var(--light-text-muted)] text-sm font-medium">
+                    Already have an account? 
+                    <a class="text-[var(--light-accent)] font-bold hover:underline cursor-pointer" onclick="showView('login')">Sign In</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let isHandlingAuth = false;
+    let currentView = 'login';
+
+    firebase.auth().onAuthStateChanged(async user => {
+        if (user && !isHandlingAuth) {
+            await redirectUserBasedOnRole(user.uid);
+        }
+    });
+
+    async function redirectUserBasedOnRole(uid) {
+        try {
+            const userDoc = await firebase.firestore().collection('users').doc(uid).get();
+            const role = userDoc.exists ? (userDoc.data().role || 'USER') : 'USER';
+            if (role === 'ADMIN' || role === 'AUTHORITY') {
+                window.location.href = 'admin.html';
+            } else {
+                window.location.href = 'dashboard.html';
+            }
+        } catch(e) {
+            window.location.href = 'dashboard.html';
+        }
+    }
+
+    function showView(view) {
+        currentView = view;
+        document.getElementById('view-login').classList.toggle('hidden', view !== 'login');
+        document.getElementById('view-register').classList.toggle('hidden', view !== 'register');
+        clearAlert();
+    }
+
+    function togglePassword(inputId, btn) {
+        const input = document.getElementById(inputId);
+        const icon = btn.querySelector('.material-symbols-outlined');
+        if (input.type === 'password') { 
+            input.type = 'text'; 
+            icon.textContent = 'visibility_off'; 
+        } else { 
+            input.type = 'password'; 
+            icon.textContent = 'visibility'; 
+        }
+    }
+
+    async function handleGoogleLogin() {
+        clearAlert();
+        isHandlingAuth = true;
+        try {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            const result = await firebase.auth().signInWithPopup(provider);
+            const user = result.user;
+            const userRef = firebase.firestore().collection('users').doc(user.uid);
+            const docSnap = await userRef.get();
+            
+            if (docSnap.exists) {
+                const d = docSnap.data();
+                if (d.isActive === false) {
+                    await firebase.auth().signOut();
+                    showAlert('Your account has been suspended by an administrator.', 'error');
+                    isHandlingAuth = false;
+                    return;
+                }
+            } else {
+                await userRef.set({ name: user.displayName, email: user.email, role: 'USER', isActive: true, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+            }
+            
+            isHandlingAuth = false;
+            await redirectUserBasedOnRole(user.uid);
+        } catch (err) {
+            showAlert(mapAuthError(err.code), 'error');
+            isHandlingAuth = false;
+        }
+    }
+
+    async function handleLogin(e) {
+        e.preventDefault();
+        const btn = document.getElementById('txt-login');
+        const origText = btn.innerHTML;
+        setLoading(btn, true, 'Signing in');
+        clearAlert();
+        isHandlingAuth = true;
+        
+        try {
+            const email = document.getElementById('login-email').value.trim();
+            const pass = document.getElementById('login-password').value;
+            const res = await firebase.auth().signInWithEmailAndPassword(email, pass);
+            
+            const userRef = firebase.firestore().collection('users').doc(res.user.uid);
+            const docSnap = await userRef.get();
+            if (docSnap.exists && docSnap.data().isActive === false) {
+                await firebase.auth().signOut();
+                showAlert('Your account has been suspended by an administrator.', 'error');
+                setLoading(btn, false, origText);
+                isHandlingAuth = false;
+                return;
+            }
+
+            isHandlingAuth = false;
+            await redirectUserBasedOnRole(res.user.uid);
+        } catch (err) {
+            showAlert(mapAuthError(err.code), 'error');
+            setLoading(btn, false, origText);
+            isHandlingAuth = false;
+        }
+    }
+
+    async function handleRegister(e) {
+        e.preventDefault();
+        const btn = document.getElementById('txt-register');
+        const origText = btn.innerHTML;
+        setLoading(btn, true, 'Creating');
+        clearAlert();
+        isHandlingAuth = true;
+        
+        try {
+            const name = document.getElementById('reg-name').value.trim();
+            const email = document.getElementById('reg-email').value.trim();
+            const pass = document.getElementById('reg-password').value;
+            
+            if (pass.length < 8) { 
+                showAlert('Password must be at least 8 characters.', 'error'); 
+                setLoading(btn, false, origText); 
+                isHandlingAuth = false; 
+                return; 
+            }
+            
+            const cred = await firebase.auth().createUserWithEmailAndPassword(email, pass);
+            await cred.user.updateProfile({ displayName: name });
+            await firebase.firestore().collection('users').doc(cred.user.uid).set({ 
+                name, 
+                email: cred.user.email, 
+                role: 'USER', 
+                createdAt: firebase.firestore.FieldValue.serverTimestamp() 
+            });
+            
+            await firebase.auth().signOut();
+            showAlert('Account created successfully! Please sign in.', 'success');
+            showView('login');
+            document.getElementById('login-email').value = email;
+        } catch (err) {
+            showAlert(mapAuthError(err.code), 'error');
+        } finally {
+            setLoading(btn, false, origText);
+            isHandlingAuth = false;
+        }
+    }
+
+    function setLoading(btnTextElement, loading, label) {
+        if (loading) {
+            btnTextElement.parentNode.disabled = true;
+            btnTextElement.innerHTML = `<span class="spinner mr-2"></span> ${label}`;
+        } else {
+            btnTextElement.parentNode.disabled = false;
+            btnTextElement.innerHTML = label;
+        }
+    }
+
+    function showAlert(msg, type='error') {
+        const banner = document.getElementById('alert-banner');
+        const inner = document.getElementById('alert-inner');
+        const icon = type === 'error' ? 'error' : 'check_circle';
+        
+        inner.className = `bg-white !p-4 flex items-center gap-3 text-sm font-bold rounded-xl w-full border ${type === 'error' ? 'border-red-300 text-red-600 bg-red-50' : 'border-emerald-300 text-emerald-600 bg-emerald-50'}`;
+        inner.innerHTML = `<span class="material-symbols-outlined text-lg">${icon}</span> ${msg}`;
+        
+        banner.classList.remove('hidden');
+        
+        banner.classList.add('animate-slide-up');
+        setTimeout(() => banner.classList.add('hidden'), 5000);
+    }
+
+    function clearAlert() { document.getElementById('alert-banner').classList.add('hidden'); }
+    
+    function mapAuthError(code) {
+        const map = {
+            'auth/user-not-found':'No account found with that email.',
+            'auth/wrong-password':'Incorrect password. Please try again.',
+            'auth/email-already-in-use':'An account with this email already exists.',
+            'auth/invalid-email':'Please enter a valid email address.',
+            'auth/network-request-failed':'Connection failed. Check your network.',
+            'auth/too-many-requests':'Too many attempts. Please wait and try again.',
+            'auth/invalid-credential':'Invalid credentials. Check your email and password.',
+        };
+        return map[code] || 'An unexpected error occurred. Please try again.';
+    }
+</script>
+</body>
+</html>

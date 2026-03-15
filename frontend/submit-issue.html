@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Submit Feedback -Feedback Portal</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-functions.js"></script>
+<script src="js/firebase-config.js"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: { primary: "#6366f1" },
+        fontFamily: { "display": ["Outfit", "sans-serif"], "body": ["Inter", "sans-serif"] },
+      },
+    },
+  }
+</script>
+<link rel="stylesheet" href="css/neumorphism.css"/>
+<script src="js/sidebar-cache.js"></script>
+<style>
+    body { font-family: 'Outfit', sans-serif; background: var(--gradient-body); color: var(--light-text); min-height: 100dvh; overflow: hidden; }
+    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    
+    .spinner { display:inline-block;width:24px;height:24px;border:3px solid rgba(99,102,241,0.2);border-top-color:#6366f1;border-radius:50%;animation:spin 1s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.2); }
+</style>
+</head>
+<body class="antialiased flex h-[100dvh] w-full">
+
+  <!-- ─── Sidebar Navigation ─── -->
+  <nav class="hidden md:flex w-72 flex-col justify-between h-full relative z-20 neu-sidebar border-r border-[var(--light-border)]">
+    <div class="p-8">
+      <div class="flex items-center gap-3 mb-8 px-1 py-1 text-left">
+        <div id="user-avatar" class="flex-shrink-0 h-11 w-11 bg-[var(--light-accent)] text-white rounded-full flex items-center justify-center text-sm font-bold shadow-inner overflow-hidden border border-[var(--light-border)]">
+          <span class="spinner w-5 h-5 border-white border-t-transparent border-2"></span>
+        </div>
+        <div class="flex flex-col min-w-0 flex-1">
+          <p id="user-name-sidebar" class="text-[0.95rem] font-bold truncate text-[var(--light-text)] leading-tight">Loading…</p>
+          <p id="user-email-sidebar" class="text-[0.75rem] font-medium text-[var(--light-text-muted)] truncate leading-tight"></p>
+        </div>
+      </div>
+      <div class="flex flex-col gap-2">
+        <a class="flex items-center gap-4 px-4 py-3.5 neu-nav-item rounded-xl" href="dashboard.html">
+          <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1">space_dashboard</span>
+          <span class="font-bold text-[0.95rem] text-[var(--light-text-muted)]">Dashboard</span>
+        </a>
+        <a class="flex items-center gap-4 px-4 py-3.5 neu-nav-active rounded-xl" href="submit-issue.html">
+          <span class="material-symbols-outlined">add_circle</span>
+          <span class="font-bold text-[0.95rem]">Submit Feedback</span>
+        </a>
+        <a class="flex items-center gap-4 px-4 py-3.5 neu-nav-item rounded-xl" href="my-issues.html">
+          <span class="material-symbols-outlined">forum</span>
+          <span class="font-bold text-[0.95rem] text-[var(--light-text-muted)]">My Submissions</span>
+        </a>
+        <a class="flex items-center gap-4 px-4 py-3.5 neu-nav-item rounded-xl relative" href="active-polls.html">
+          <span class="material-symbols-outlined">how_to_vote</span>
+          <span class="font-bold text-[0.95rem] text-[var(--light-text-muted)]">Active Polls</span>
+          <span id="polls-badge" class="ml-auto bg-indigo-100 text-[var(--light-accent)] shadow-sm text-xs font-bold px-2 py-0.5 rounded-full hidden">0</span>
+        </a>
+        <a class="flex items-center gap-4 px-4 py-3.5 neu-nav-item rounded-xl" href="profile.html">
+          <span class="material-symbols-outlined">badge</span>
+          <span class="font-bold text-[0.95rem] text-[var(--light-text-muted)]">My Profile</span>
+        </a>
+      </div>
+    </div>
+    <div class="p-6 flex flex-col gap-2 border-t border-[var(--light-border)]">
+      <button onclick="handleLogout()" class="flex items-center gap-4 px-4 py-3 neu-nav-item rounded-xl text-red-500 hover:text-red-600 hover:bg-red-50 transition-all w-full mt-2">
+        <span class="material-symbols-outlined">logout</span>
+        <span class="font-bold text-[0.95rem]">Sign Out</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ─── Main ─── -->
+  <main class="flex-1 h-full overflow-y-auto relative w-full">
+    <div class="absolute top-0 right-0 w-[500px] h-[500px] rounded-full pointer-events-none -translate-y-1/2 translate-x-1/3 opacity-30" style="background:radial-gradient(circle,rgba(99,102,241,0.15) 0%,transparent 70%)"></div>
+    <div class="absolute bottom-0 left-0 w-[400px] h-[400px] rounded-full pointer-events-none translate-y-1/3 -translate-x-1/3 opacity-20" style="background:radial-gradient(circle,rgba(139,92,246,0.15) 0%,transparent 70%)"></div>
+
+    <div class="max-w-4xl mx-auto px-5 py-8 pb-32 md:pb-12 md:px-10 lg:px-12 flex flex-col h-full relative z-10 w-full">
+      <header class="mb-10 animate-slide-up">
+        <h2 class="text-3xl md:text-4xl font-extrabold text-[var(--light-text)] tracking-tight">Submit Feedback</h2>
+        <p class="text-[var(--light-text-muted)] text-base font-medium mt-1 font-body">Help us improve the experience by detailing your observation.</p>
+      </header>
+
+      <div id="issue-form" class="animate-slide-up" style="animation-delay: 0.1s;">
+        <form onsubmit="handleSubmit(event)" class="bg-white border border-[var(--light-border)] rounded-3xl p-6 sm:p-10 shadow-sm space-y-8 relative overflow-hidden group">
+          <div class="absolute -right-10 -top-10 w-40 h-40 bg-indigo-50 rounded-full group-hover:scale-150 transition-transform duration-700 ease-out z-0 pointer-events-none"></div>
+          
+          <div class="relative z-10 space-y-8">
+              <!-- Category -->
+              <div class="space-y-4">
+                <label class="text-xs font-bold text-[var(--light-text-light)] uppercase tracking-widest pl-1">Select Category</label>
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  <label class="cursor-pointer group">
+                    <input type="radio" name="category" value="App Bug" class="hidden peer" checked>
+                    <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col items-center gap-2 group-hover:border-indigo-300 peer-checked:bg-[var(--light-accent)] peer-checked:border-[var(--light-accent)] peer-checked:text-white transition-all text-slate-600 shadow-sm peer-checked:shadow-md">
+                      <span class="material-symbols-outlined text-2xl">bug_report</span>
+                      <span class="text-xs font-bold uppercase tracking-tight">App Bug</span>
+                    </div>
+                  </label>
+                  <label class="cursor-pointer group">
+                    <input type="radio" name="category" value="AR Tracking" class="hidden peer">
+                    <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col items-center gap-2 group-hover:border-indigo-300 peer-checked:bg-[var(--light-accent)] peer-checked:border-[var(--light-accent)] peer-checked:text-white transition-all text-slate-600 shadow-sm peer-checked:shadow-md">
+                      <span class="material-symbols-outlined text-2xl">view_in_ar</span>
+                      <span class="text-xs font-bold uppercase tracking-tight">AR Tracking</span>
+                    </div>
+                  </label>
+                  <label class="cursor-pointer group">
+                    <input type="radio" name="category" value="Model Quality" class="hidden peer">
+                    <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col items-center gap-2 group-hover:border-indigo-300 peer-checked:bg-[var(--light-accent)] peer-checked:border-[var(--light-accent)] peer-checked:text-white transition-all text-slate-600 shadow-sm peer-checked:shadow-md">
+                      <span class="material-symbols-outlined text-2xl">chair</span>
+                      <span class="text-xs font-bold uppercase tracking-tight">Model Quality</span>
+                    </div>
+                  </label>
+                  <label class="cursor-pointer group">
+                    <input type="radio" name="category" value="Feature Request" class="hidden peer">
+                    <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col items-center gap-2 group-hover:border-indigo-300 peer-checked:bg-[var(--light-accent)] peer-checked:border-[var(--light-accent)] peer-checked:text-white transition-all text-slate-600 shadow-sm peer-checked:shadow-md">
+                      <span class="material-symbols-outlined text-2xl">lightbulb</span>
+                      <span class="text-xs font-bold uppercase tracking-tight">Feature Req</span>
+                    </div>
+                  </label>
+                  <label class="cursor-pointer group">
+                    <input type="radio" name="category" value="Other" class="hidden peer">
+                    <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col items-center gap-2 group-hover:border-indigo-300 peer-checked:bg-[var(--light-accent)] peer-checked:border-[var(--light-accent)] peer-checked:text-white transition-all text-slate-600 shadow-sm peer-checked:shadow-md">
+                      <span class="material-symbols-outlined text-2xl">more_horiz</span>
+                      <span class="text-xs font-bold uppercase tracking-tight">Other</span>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Description -->
+              <div class="space-y-4">
+                <label class="text-xs font-bold text-[var(--light-text-light)] uppercase tracking-widest pl-1">What happened?</label>
+                <textarea id="description" required class="w-full h-40 bg-slate-50 border border-slate-200 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 rounded-2xl p-4 text-[var(--light-text)] placeholder-slate-400 font-body resize-none transition-all outline-none shadow-inner" placeholder="Tell us more about the issue or feedback..."></textarea>
+              </div>
+
+              <!-- File Upload -->
+              <div class="space-y-4">
+                <label class="text-xs font-bold text-[var(--light-text-light)] uppercase tracking-widest pl-1">Attachment (Optional screenshot or model)</label>
+                <div id="drop-zone" class="bg-slate-50 rounded-2xl p-8 border-2 border-dashed border-slate-300 flex flex-col items-center justify-center gap-3 transition-all cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/50 group">
+                  <span class="material-symbols-outlined text-4xl text-slate-500 group-hover:text-indigo-500 transition-colors">cloud_upload</span>
+                  <p class="text-slate-500 font-medium font-body text-center">Drop files here or click to upload</p>
+                  <p class="text-xs text-[var(--light-text-light)] font-body text-center mt-1">Images, PDFs, or Text documents allowed</p>
+                  <input type="file" id="file-input" class="hidden" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt">
+                </div>
+              </div>
+
+              <!-- Submit Button -->
+              <button type="submit" id="submit-btn" class="w-full py-4 bg-[var(--light-accent)] text-white shadow-lg shadow-indigo-200 hover:shadow-xl hover:bg-indigo-600 hover:-translate-y-0.5 rounded-xl font-bold uppercase tracking-widest text-sm transition-all flex items-center justify-center gap-2 active:scale-[0.98]">
+                  <span class="material-symbols-outlined text-lg">send</span>
+                  Submit Feedback
+              </button>
+          </div>
+        </form>
+      </div>
+
+      <div id="success-state" class="hidden flex-1 flex flex-col items-center justify-center animate-scale-up py-20 px-4">
+        <div class="w-24 h-24 bg-emerald-100 rounded-full text-emerald-600 flex items-center justify-center mb-6 shadow-inner border border-emerald-200">
+          <span class="material-symbols-outlined text-5xl" style="font-variation-settings:'FILL' 1">check_circle</span>
+        </div>
+        <h3 class="text-3xl font-extrabold text-[var(--light-text)] mb-2 text-center tracking-tight">Feedback Submitted!</h3>
+        <p class="text-[var(--light-text-muted)] font-medium mb-10 text-center font-body text-lg max-w-md">Thank you for helping us improve the FeedbackPortal. We're on it!</p>
+        <div class="flex flex-col sm:flex-row gap-4 w-full max-w-md">
+          <button onclick="resetForm()" class="flex-1 py-4 bg-white border border-[var(--light-border)] text-[var(--light-text)] hover:shadow-md rounded-xl font-bold uppercase tracking-wider text-sm transition-all">Submit Another</button>
+          <a href="dashboard.html" class="flex-1 py-4 bg-[var(--light-accent)] text-white shadow-lg shadow-indigo-200 hover:bg-indigo-600 rounded-xl font-bold uppercase tracking-wider text-sm text-center transition-all">Go to Dashboard</a>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ─── Mobile Bottom Nav ─── -->
+  <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-[var(--light-border)] flex justify-around items-center h-[72px] px-2 z-50 pb-safe shadow-[0_-4px_24px_rgba(0,0,0,0.04)]">
+    <a href="dashboard.html" class="flex flex-col items-center justify-center w-16 h-full text-[var(--light-text-light)] hover:text-[var(--light-text)] transition-colors">
+      <span class="material-symbols-outlined text-2xl mb-1">space_dashboard</span>
+      <span class="text-[10px] font-bold">Home</span>
+    </a>
+    <a href="submit-issue.html" class="flex flex-col items-center justify-center w-16 h-full text-[var(--light-accent)] relative">
+      <div class="absolute -top-3 w-10 h-1 rounded-full bg-[var(--light-accent)]"></div>
+      <span class="material-symbols-outlined text-2xl mb-1" style="font-variation-settings:'FILL' 1">add_circle</span>
+      <span class="text-[10px] font-bold">Submit</span>
+    </a>
+    <a href="my-issues.html" class="flex flex-col items-center justify-center w-16 h-full text-[var(--light-text-light)] hover:text-[var(--light-text)] transition-colors">
+      <span class="material-symbols-outlined text-2xl mb-1">forum</span>
+      <span class="text-[10px] font-bold">Feedback</span>
+    </a>
+    <a href="active-polls.html" class="flex flex-col items-center justify-center w-16 h-full text-[var(--light-text-light)] hover:text-[var(--light-text)] transition-colors relative">
+      <span class="material-symbols-outlined text-2xl mb-1">how_to_vote</span>
+      <span class="text-[10px] font-bold">Polls</span>
+      <span id="polls-mobile-badge" class="absolute top-2 right-2 w-4 h-4 bg-red-500 text-white text-[9px] font-bold flex items-center justify-center rounded-full shadow-sm hidden">0</span>
+    </a>
+    <a href="profile.html" class="flex flex-col items-center justify-center w-16 h-full text-[var(--light-text-light)] hover:text-[var(--light-text)] transition-colors">
+      <span class="material-symbols-outlined text-2xl mb-1">person</span>
+      <span class="text-[10px] font-bold">Profile</span>
+    </a>
+  </nav>
+</div>
+
+<script>
+  const db = firebase.firestore();
+  let currentUser = null;
+
+  firebase.auth().onAuthStateChanged(async user => {
+    if (!user) { window.location.href = 'index.html'; return; }
+    currentUser = user;
+    const name = user.displayName || user.email.split('@')[0];
+    document.getElementById('user-name-sidebar').textContent = name;
+    
+    const userDoc = await db.collection('users').doc(user.uid).get();
+    if (userDoc.exists) {
+      const data = userDoc.data();
+      const roleText = data.role === 'USER' ? 'Customer' : data.role;
+      const avatarEl = document.getElementById('user-avatar');
+      if (data.avatarUrl) avatarEl.innerHTML = `<img src="${data.avatarUrl}" class="w-full h-full object-cover rounded-full">`;
+      else {
+          avatarEl.innerHTML = name.slice(0, 2).toUpperCase();
+      }
+      saveSidebarCache(name, roleText, data.avatarUrl || null, currentUser.email);
+    }
+    updatePollsBadge();
+  });
+
+  // File handling
+  const dropZone = document.getElementById('drop-zone');
+  const fileInput = document.getElementById('file-input');
+  let selectedFile = null;
+
+  dropZone.addEventListener('click', () => fileInput.click());
+
+  fileInput.addEventListener('change', (e) => {
+    if (e.target.files.length > 0) {
+      selectedFile = e.target.files[0];
+      dropZone.querySelector('p:first-of-type').textContent = `Selected: ${selectedFile.name}`;
+      dropZone.querySelector('p:first-of-type').classList.add('text-indigo-600', 'font-bold');
+      dropZone.classList.add('border-indigo-400', 'bg-indigo-50/50');
+    }
+  });
+
+  dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropZone.classList.add('border-indigo-400', 'bg-indigo-50/50');
+  });
+
+  dropZone.addEventListener('dragleave', () => {
+    if(!selectedFile) dropZone.classList.remove('border-indigo-400', 'bg-indigo-50/50');
+  });
+
+  dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    if (e.dataTransfer.files.length > 0) {
+      selectedFile = e.dataTransfer.files[0];
+      dropZone.querySelector('p:first-of-type').textContent = `Selected: ${selectedFile.name}`;
+      dropZone.querySelector('p:first-of-type').classList.add('text-indigo-600', 'font-bold');
+      dropZone.classList.add('border-indigo-400', 'bg-indigo-50/50');
+    } else {
+      dropZone.classList.remove('border-indigo-400', 'bg-indigo-50/50');
+    }
+  });
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner w-4 h-4 mr-2 border-white"></span> Submitting...';
+    btn.classList.add('opacity-70', 'cursor-not-allowed');
+
+    const category = document.querySelector('input[name="category"]:checked').value;
+    const description = document.getElementById('description').value;
+    
+    try {
+      // 1. Add Issue
+      const issueRef = await db.collection('issues').add({
+        userId: currentUser.uid,
+        userName: currentUser.displayName || currentUser.email.split('@')[0],
+        category,
+        description,
+        status: 'PENDING',
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      const issueId = issueRef.id;
+
+      // 2. Handle File Upload if present
+      if (selectedFile) {
+        btn.innerHTML = '<span class="spinner w-4 h-4 mr-2 border-white"></span> Uploading...';
+        const fd = new FormData();
+        fd.append('file', selectedFile);
+        fd.append('upload_preset', 'ml_default');
+        fd.append('folder', `secure-feedback/${issueId}`);
+        
+        const uploadRes = await fetch('https://api.cloudinary.com/v1_1/dba85njbc/auto/upload', {
+          method: 'POST',
+          body: fd
+        });
+
+        if(!uploadRes.ok) {
+          throw new Error("File upload failed.");
+        }
+        
+        const cloudinaryData = await uploadRes.json();
+
+        // 3. Save Document Record
+        await db.collection("documents").add({
+          issueId: issueId,
+          userId: currentUser.uid,
+          fileName: selectedFile.name,
+          storagePublicId: cloudinaryData.public_id,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          secureUrl: cloudinaryData.secure_url
+        });
+      }
+
+      document.getElementById('issue-form').classList.add('hidden');
+      document.getElementById('success-state').classList.remove('hidden');
+    } catch (err) {
+      alert('Error submitting: ' + err.message);
+      btn.disabled = false;
+      btn.innerHTML = '<span class="material-symbols-outlined text-lg">send</span> Submit Feedback';
+      btn.classList.remove('opacity-70', 'cursor-not-allowed');
+    }
+  }
+
+  function resetForm() {
+    document.getElementById('description').value = '';
+    selectedFile = null;
+    dropZone.querySelector('p:first-of-type').textContent = `Drop files here or click to upload`;
+    dropZone.querySelector('p:first-of-type').classList.remove('text-indigo-600', 'font-bold');
+    dropZone.classList.remove('border-indigo-400', 'bg-indigo-50/50');
+    
+    document.getElementById('issue-form').classList.remove('hidden');
+    document.getElementById('success-state').classList.add('hidden');
+    
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = false;
+    btn.innerHTML = '<span class="material-symbols-outlined text-lg">send</span> Submit Feedback';
+    btn.classList.remove('opacity-70', 'cursor-not-allowed');
+  }
+
+  function handleLogout() {
+    firebase.auth().signOut().then(() => {
+      window.location.href = 'index.html';
+    });
+  }
+
+  // Polls Badge
+  async function updatePollsBadge() {
+    try {
+      const snap = await db.collection('polls').where('isActive', '==', true).get();
+      const badge = document.getElementById('polls-badge');
+      const mobileBadge = document.getElementById('polls-mobile-badge');
+      if (snap.size > 0) {
+        if (badge) { badge.textContent = snap.size; badge.classList.remove('hidden'); }
+        if (mobileBadge) { mobileBadge.textContent = snap.size; mobileBadge.classList.remove('hidden'); }
+      } else {
+        if (badge) badge.classList.add('hidden');
+        if (mobileBadge) mobileBadge.classList.add('hidden');
+      }
+    } catch (e) {
+      console.error("Error updating polls badge:", e);
+    }
+  }
+</script>
+</body>
+</html>

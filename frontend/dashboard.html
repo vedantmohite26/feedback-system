@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Dashboard - Feedback Portal</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-functions.js"></script>
+<script src="js/firebase-config.js"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: { primary: "#6366f1" },
+        fontFamily: { "display": ["Outfit", "sans-serif"], "body": ["Inter", "sans-serif"] },
+      },
+    },
+  }
+</script>
+<link rel="stylesheet" href="css/neumorphism.css"/>
+<script src="js/sidebar-cache.js"></script>
+<style>
+    body { font-family: 'Outfit', sans-serif; background: var(--gradient-body); color: var(--light-text); min-height: 100dvh; overflow: hidden; }
+    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    
+    .spinner { display:inline-block;width:24px;height:24px;border:3px solid rgba(99,102,241,0.2);border-top-color:#6366f1;border-radius:50%;animation:spin 1s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.2); }
+</style>
+</head>
+<body class="antialiased flex h-[100dvh] w-full">
+
+  <!-- ─── Sidebar Navigation ─── -->
+  <nav class="hidden md:flex w-72 flex-col justify-between h-full relative z-20 neu-sidebar border-r border-[var(--light-border)]">
+    <div class="p-8">
+      <div class="flex items-center gap-3 mb-8 px-1 py-1 text-left">
+        <div id="user-avatar" class="flex-shrink-0 h-11 w-11 bg-[var(--light-accent)] text-white rounded-full flex items-center justify-center text-sm font-bold shadow-inner overflow-hidden border border-[var(--light-border)]">
+          <span class="spinner w-5 h-5 border-white border-t-transparent border-2"></span>
+        </div>
+        <div class="flex flex-col min-w-0 flex-1">
+          <p id="user-name-sidebar" class="text-[0.95rem] font-bold truncate text-[var(--light-text)] leading-tight">Loading…</p>
+          <p id="user-email-sidebar" class="text-[0.75rem] font-medium text-[var(--light-text-muted)] truncate leading-tight"></p>
+        </div>
+      </div>
+      <div class="flex flex-col gap-2">
+        <a class="flex items-center gap-4 px-4 py-3.5 neu-nav-active rounded-xl" href="dashboard.html">
+          <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1">space_dashboard</span>
+          <span class="font-bold text-[0.95rem]">Dashboard</span>
+        </a>
+        <a class="flex items-center gap-4 px-4 py-3.5 neu-nav-item rounded-xl" href="submit-issue.html">
+          <span class="material-symbols-outlined">add_circle</span>
+          <span class="font-bold text-[0.95rem] text-[var(--light-text-muted)]">Submit Feedback</span>
+        </a>
+        <a class="flex items-center gap-4 px-4 py-3.5 neu-nav-item rounded-xl" href="my-issues.html">
+          <span class="material-symbols-outlined">forum</span>
+          <span class="font-bold text-[0.95rem] text-[var(--light-text-muted)]">My Submissions</span>
+        </a>
+        <a class="flex items-center gap-4 px-4 py-3.5 neu-nav-item rounded-xl relative" href="active-polls.html">
+          <span class="material-symbols-outlined">how_to_vote</span>
+          <span class="font-bold text-[0.95rem] text-[var(--light-text-muted)]">Active Polls</span>
+          <span id="polls-badge" class="ml-auto bg-indigo-100 text-[var(--light-accent)] shadow-sm text-xs font-bold px-2 py-0.5 rounded-full hidden">0</span>
+        </a>
+        <a class="flex items-center gap-4 px-4 py-3.5 neu-nav-item rounded-xl" href="profile.html">
+          <span class="material-symbols-outlined">badge</span>
+          <span class="font-bold text-[0.95rem] text-[var(--light-text-muted)]">My Profile</span>
+        </a>
+      </div>
+    </div>
+    <div class="p-6 flex flex-col gap-2 border-t border-[var(--light-border)]">
+      <button onclick="handleLogout()" class="flex items-center gap-4 px-4 py-3 neu-nav-item rounded-xl text-red-500 hover:text-red-600 hover:bg-red-50 transition-all w-full mt-2">
+        <span class="material-symbols-outlined">logout</span>
+        <span class="font-bold text-[0.95rem]">Sign Out</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ─── Main ─── -->
+  <main class="flex-1 h-full overflow-y-auto relative w-full">
+    <!-- Background Decor -->
+    <div class="absolute top-0 right-0 w-[500px] h-[500px] rounded-full pointer-events-none -translate-y-1/2 translate-x-1/3 opacity-30" style="background:radial-gradient(circle,rgba(99,102,241,0.15) 0%,transparent 70%)"></div>
+    <div class="absolute bottom-0 left-0 w-[400px] h-[400px] rounded-full pointer-events-none translate-y-1/3 -translate-x-1/3 opacity-20" style="background:radial-gradient(circle,rgba(139,92,246,0.15) 0%,transparent 70%)"></div>
+
+    <div class="max-w-6xl mx-auto px-5 py-8 pb-32 md:pb-12 md:px-10 lg:px-12 flex flex-col h-full relative z-10 w-full">
+      <header class="mb-10 flex flex-col sm:flex-row justify-between sm:items-end gap-6 animate-slide-up">
+        <div>
+          <div class="flex items-center gap-2 mb-2">
+            <span id="today-date" class="text-xs font-bold text-[var(--light-text-light)] uppercase tracking-widest"></span>
+          </div>
+          <h2 class="text-3xl md:text-4xl font-extrabold text-[var(--light-text)] tracking-tight">
+            <span id="greeting-text">Welcome</span>, <span id="greeting-name" class="text-[var(--light-accent)]"></span>
+          </h2>
+          <p id="greeting-sub" class="text-[var(--light-text-muted)] text-base font-medium mt-1 font-body">Preparing your dashboard...</p>
+        </div>
+        <button onclick="window.location.href='submit-issue.html'" class="hidden sm:flex items-center justify-center gap-2 px-6 py-3 bg-white text-[var(--light-text)] border border-[var(--light-border)] shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all rounded-xl font-bold">
+            <span class="material-symbols-outlined text-[var(--light-accent)]">add</span>
+            New Feedback
+        </button>
+      </header>
+
+      <!-- Stats Grid -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-10 animate-slide-up" style="animation-delay: 0.1s;">
+        <!-- Stat 1 -->
+        <div class="bg-white border border-[var(--light-border)] p-5 rounded-2xl shadow-sm hover:shadow-md transition-shadow flex flex-col gap-3 relative overflow-hidden group">
+          <div class="absolute -right-4 -top-4 w-20 h-20 bg-emerald-50 rounded-full group-hover:scale-150 transition-transform duration-500 ease-out z-0"></div>
+          <div class="flex items-center justify-between relative z-10">
+            <div class="h-10 w-10 text-emerald-600 bg-emerald-100 rounded-xl flex items-center justify-center shadow-sm">
+                <span class="material-symbols-outlined text-xl" style="font-variation-settings:'FILL' 1">check_circle</span>
+            </div>
+            <span class="text-[10px] font-bold text-[var(--light-text-light)] uppercase tracking-wider">Resolved</span>
+          </div>
+          <div class="relative z-10 mt-2">
+              <h3 id="stat-resolved" class="text-3xl font-black text-[var(--light-text)] tracking-tight">0</h3>
+              <p class="text-xs text-[var(--light-text-muted)] font-semibold mt-1">Feedback addressed</p>
+          </div>
+        </div>
+
+        <!-- Stat 2 -->
+        <div class="bg-white border border-[var(--light-border)] p-5 rounded-2xl shadow-sm hover:shadow-md transition-shadow flex flex-col gap-3 relative overflow-hidden group">
+          <div class="absolute -right-4 -top-4 w-20 h-20 bg-amber-50 rounded-full group-hover:scale-150 transition-transform duration-500 ease-out z-0"></div>
+          <div class="flex items-center justify-between relative z-10">
+            <div class="h-10 w-10 text-amber-600 bg-amber-100 rounded-xl flex items-center justify-center shadow-sm">
+                <span class="material-symbols-outlined text-xl" style="font-variation-settings:'FILL' 1">pending</span>
+            </div>
+            <span class="text-[10px] font-bold text-[var(--light-text-light)] uppercase tracking-wider">Pending</span>
+          </div>
+          <div class="relative z-10 mt-2">
+              <h3 id="stat-pending" class="text-3xl font-black text-[var(--light-text)] tracking-tight">0</h3>
+              <p class="text-xs text-[var(--light-text-muted)] font-semibold mt-1">Awaiting review</p>
+          </div>
+        </div>
+
+        <!-- Stat 3 -->
+        <div class="bg-white border border-[var(--light-border)] p-5 rounded-2xl shadow-sm hover:shadow-md transition-shadow flex flex-col gap-3 relative overflow-hidden group" onclick="window.location.href='active-polls.html'" style="cursor:pointer;">
+          <div class="absolute -right-4 -top-4 w-20 h-20 bg-indigo-50 rounded-full group-hover:scale-150 transition-transform duration-500 ease-out z-0"></div>
+          <div class="flex items-center justify-between relative z-10">
+            <div class="h-10 w-10 text-[var(--light-accent)] bg-indigo-100 rounded-xl flex items-center justify-center shadow-sm">
+                <span class="material-symbols-outlined text-xl" style="font-variation-settings:'FILL' 1">ballot</span>
+            </div>
+            <span class="text-[10px] font-bold text-[var(--light-text-light)] uppercase tracking-wider">Polls</span>
+          </div>
+          <div class="relative z-10 mt-2">
+              <h3 id="stat-polls" class="text-3xl font-black text-[var(--light-text)] tracking-tight">0</h3>
+              <p class="text-xs text-[var(--light-text-muted)] font-semibold mt-1">Active polls to vote on</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Submissions -->
+        <section class="animate-slide-up" style="animation-delay: 0.2s;">
+          <div class="flex items-center justify-between mb-5 px-1">
+            <h3 class="text-lg font-bold text-[var(--light-text)]">Recent Feedback</h3>
+            <a href="my-issues.html" class="text-sm font-bold text-[var(--light-accent)] hover:underline flex items-center gap-1">View All <span class="material-symbols-outlined text-sm">chevron_right</span></a>
+          </div>
+          <div id="issues-grid" class="flex flex-col gap-3">
+            <div class="bg-white border border-[var(--light-border)] rounded-2xl p-6 shadow-sm"><div class="animate-pulse bg-slate-100 h-16 w-full rounded-xl"></div></div>
+          </div>
+        </section>
+
+        <!-- Polls -->
+        <section class="animate-slide-up" style="animation-delay: 0.3s;">
+          <div class="flex items-center justify-between mb-5 px-1">
+            <h3 class="text-lg font-bold text-[var(--light-text)]">Latest Polls</h3>
+            <a href="active-polls.html" class="text-sm font-bold text-[var(--light-accent)] hover:underline flex items-center gap-1">Vote Now <span class="material-symbols-outlined text-sm">chevron_right</span></a>
+          </div>
+          <div id="polls-grid" class="flex flex-col gap-3">
+            <div class="bg-white border border-[var(--light-border)] rounded-2xl p-6 shadow-sm"><div class="animate-pulse bg-slate-100 h-16 w-full rounded-xl"></div></div>
+          </div>
+        </section>
+      </div>
+      
+    </div>
+  </main>
+
+  <!-- ─── Mobile Bottom Nav ─── -->
+  <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-[var(--light-border)] flex justify-around items-center h-[72px] px-2 z-50 pb-safe shadow-[0_-4px_24px_rgba(0,0,0,0.04)]">
+    <a href="dashboard.html" class="flex flex-col items-center justify-center w-16 h-full text-[var(--light-accent)] relative">
+      <div class="absolute -top-3 w-10 h-1 rounded-full bg-[var(--light-accent)]"></div>
+      <span class="material-symbols-outlined text-2xl mb-1" style="font-variation-settings:'FILL' 1">space_dashboard</span>
+      <span class="text-[10px] font-bold">Home</span>
+    </a>
+    <a href="submit-issue.html" class="flex flex-col items-center justify-center w-16 h-full text-[var(--light-text-light)] hover:text-[var(--light-text)] transition-colors">
+      <span class="material-symbols-outlined text-2xl mb-1">add_circle</span>
+      <span class="text-[10px] font-bold">Submit</span>
+    </a>
+    <a href="my-issues.html" class="flex flex-col items-center justify-center w-16 h-full text-[var(--light-text-light)] hover:text-[var(--light-text)] transition-colors">
+      <span class="material-symbols-outlined text-2xl mb-1">forum</span>
+      <span class="text-[10px] font-bold">Feedback</span>
+    </a>
+    <a href="active-polls.html" class="flex flex-col items-center justify-center w-16 h-full text-[var(--light-text-light)] hover:text-[var(--light-text)] transition-colors relative">
+      <span class="material-symbols-outlined text-2xl mb-1">how_to_vote</span>
+      <span class="text-[10px] font-bold">Polls</span>
+      <span id="polls-mobile-badge" class="absolute top-2 right-2 w-4 h-4 bg-red-500 text-white text-[9px] font-bold flex items-center justify-center rounded-full shadow-sm hidden">0</span>
+    </a>
+    <a href="profile.html" class="flex flex-col items-center justify-center w-16 h-full text-[var(--light-text-light)] hover:text-[var(--light-text)] transition-colors">
+      <span class="material-symbols-outlined text-2xl mb-1">person</span>
+      <span class="text-[10px] font-bold">Profile</span>
+    </a>
+  </nav>
+</div>
+
+<script>
+  const db = firebase.firestore();
+  let currentUser = null;
+
+  document.getElementById('today-date').textContent = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+  const h = new Date().getHours();
+  document.getElementById('greeting-text').textContent = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+
+  firebase.auth().onAuthStateChanged(async user => {
+    if (!user) { window.location.href = 'index.html'; return; }
+    currentUser = user;
+    const name = user.displayName || user.email.split('@')[0];
+    document.getElementById('greeting-name').textContent = name.split(' ')[0];
+    document.getElementById('user-name-sidebar').textContent = name;
+
+    const userDoc = await db.collection('users').doc(user.uid).get();
+    if (userDoc.exists) {
+        const role = userDoc.data().role || 'USER';
+        if (role === 'ADMIN' || role === 'AUTHORITY') {
+            window.location.href = 'admin.html';
+            return;
+        }
+        
+        const avatarEl = document.getElementById('user-avatar');
+        if (userDoc.data().avatarUrl) {
+            avatarEl.innerHTML = `<img src="${userDoc.data().avatarUrl}" class="w-full h-full object-cover rounded-full">`;
+        } else {
+            avatarEl.innerHTML = name.slice(0, 2).toUpperCase();
+        }
+        saveSidebarCache(name, 'Customer', userDoc.data().avatarUrl || null, currentUser.email);
+    }
+    loadStats(); loadIssues(); loadPolls(); updatePollsBadge();
+  });
+
+  async function loadStats() {
+    try {
+      const snap = await db.collection('issues').where('userId', '==', currentUser.uid).get();
+      let resolved = 0, pending = 0;
+      snap.forEach(d => {
+        if (d.data().status === 'RESOLVED') resolved++;
+        else if (['PENDING', 'IN_PROGRESS'].includes(d.data().status)) pending++;
+      });
+      document.getElementById('stat-resolved').textContent = resolved;
+      document.getElementById('stat-pending').textContent = pending;
+      
+      const pSnap = await db.collection('polls').where('isActive', '==', true).get();
+      document.getElementById('stat-polls').textContent = pSnap.size;
+      
+      const sub = document.getElementById('greeting-sub');
+      if (pending > 0) {
+          sub.textContent = `You have ${pending} feedback item${pending>1?'s':''} awaiting review.`;
+      } else {
+          sub.textContent = "You don't have any pending feedback items.";
+      }
+    } catch (e) { console.error(e); }
+  }
+
+  async function loadIssues() {
+    const grid = document.getElementById('issues-grid');
+    try {
+      const snap = await db.collection('issues')
+          .where('userId', '==', currentUser.uid)
+          .orderBy('createdAt', 'desc')
+          .limit(4).get();
+          
+      if (snap.empty) { 
+          grid.innerHTML = `
+            <div class="bg-white border border-[var(--light-border)] border-dashed rounded-2xl p-8 text-center flex flex-col items-center justify-center gap-2">
+                <span class="material-symbols-outlined text-[var(--light-text-light)] text-3xl">inbox</span>
+                <p class="text-[var(--light-text-muted)] font-semibold text-sm">No feedback submitted yet.</p>
+                <button onclick="window.location.href='submit-issue.html'" class="mt-2 text-sm font-bold text-[var(--light-accent)] hover:underline">Submit Feedback</button>
+            </div>`; 
+          return; 
+      }
+      grid.innerHTML = snap.docs.map(doc => {
+        const d = doc.data(); 
+        const date = d.createdAt ? new Date(d.createdAt.toDate()).toLocaleDateString('en-US', {month:'short', day:'numeric'}) : 'Just now';
+        
+        let statusStyle = "bg-slate-100 text-slate-600";
+        if (d.status === 'RESOLVED') statusStyle = "bg-emerald-100 text-emerald-700";
+        else if (d.status === 'IN_PROGRESS') statusStyle = "bg-amber-100 text-amber-700";
+        else if (d.status === 'PENDING') statusStyle = "bg-indigo-100 text-indigo-700";
+
+        return `
+        <div class="bg-white border border-[var(--light-border)] rounded-2xl p-4 sm:p-5 flex items-center gap-4 cursor-pointer hover:shadow-md hover:border-[var(--light-border-hover)] transition-all" onclick="window.location.href='issue-detail.html?id=${doc.id}'">
+          <div class="h-10 w-10 sm:h-12 sm:w-12 bg-[var(--gradient-body)] border border-[var(--light-border)] shadow-inner rounded-xl flex items-center justify-center text-[var(--light-accent)] flex-shrink-0">
+              <span class="material-symbols-outlined text-lg sm:text-xl" style="font-variation-settings:'FILL' 1">description</span>
+          </div>
+          <div class="flex-1 min-w-0 flex flex-col">
+              <div class="flex items-center justify-between gap-2 mb-0.5">
+                  <h4 class="font-bold text-[var(--light-text)] truncate text-sm sm:text-base">${d.category || 'General'}</h4>
+                  <span class="text-[10px] font-bold text-[var(--light-text-light)] whitespace-nowrap">${date}</span>
+              </div>
+              <div class="flex items-center justify-between gap-4">
+                  <p class="text-[13px] text-[var(--light-text-muted)] truncate font-body">${d.description || 'No description'}</p>
+                  <span class="text-[9px] sm:text-[10px] uppercase tracking-wider font-extrabold px-2 py-0.5 rounded flex-shrink-0 ${statusStyle}">${d.status}</span>
+              </div>
+          </div>
+        </div>`;
+      }).join('');
+    } catch (e) { console.error(e); }
+  }
+
+  async function loadPolls() {
+    const grid = document.getElementById('polls-grid');
+    try {
+      const snap = await db.collection('polls').where('isActive', '==', true).limit(3).get();
+      if (snap.empty) { 
+          grid.innerHTML = `
+            <div class="bg-white border border-[var(--light-border)] border-dashed rounded-2xl p-8 text-center flex flex-col items-center justify-center gap-2 h-full min-h-[160px]">
+                <span class="material-symbols-outlined text-[var(--light-text-light)] text-3xl">inventory_2</span>
+                <p class="text-[var(--light-text-muted)] font-semibold text-sm">No active polls at the moment.</p>
+            </div>`; 
+          return; 
+      }
+      grid.innerHTML = snap.docs.map(doc => `
+        <article class="bg-white border border-[var(--light-border)] rounded-2xl p-5 hover:shadow-md hover:border-[var(--light-border-hover)] transition-all cursor-pointer relative overflow-hidden group" onclick="window.location.href='active-polls.html'">
+            <div class="absolute right-0 top-0 bottom-0 w-1/3 bg-gradient-to-l from-indigo-50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <div class="relative z-10">
+                <div class="flex justify-between items-start gap-2 mb-2">
+                    <h3 class="text-base font-bold text-[var(--light-text)] line-clamp-1 leading-tight">${doc.data().title}</h3>
+                    <span class="material-symbols-outlined text-[var(--light-accent)] text-lg opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all">arrow_forward</span>
+                </div>
+                <p class="text-[13px] text-[var(--light-text-muted)] line-clamp-2 font-body">${doc.data().description || ''}</p>
+            </div>
+        </article>
+      `).join('');
+    } catch (e) { console.error(e); }
+  }
+
+  async function updatePollsBadge() {
+    try {
+      const snap = await db.collection('polls').where('isActive', '==', true).get();
+      const badge = document.getElementById('polls-badge');
+      const mobileBadge = document.getElementById('polls-mobile-badge');
+      if (snap.size > 0) {
+        if (badge) { badge.textContent = snap.size; badge.classList.remove('hidden'); }
+        if (mobileBadge) { mobileBadge.textContent = snap.size; mobileBadge.classList.remove('hidden'); }
+      } else {
+        if (badge) badge.classList.add('hidden');
+        if (mobileBadge) mobileBadge.classList.add('hidden');
+      }
+    } catch (e) { console.error(e); }
+  }
+
+  function handleLogout() {
+    firebase.auth().signOut().then(() => {
+      window.location.href = 'index.html';
+    });
+  }
+</script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch(err => {
+        console.log('SW registration failed: ', err);
+      });
+    });
+  }
+</script>
+</body>
+</html>

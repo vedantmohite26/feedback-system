@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Admin Hub — Acme Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" crossorigin/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link rel="dns-prefetch" href="https://www.gstatic.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+
+<style>
+  ::-webkit-scrollbar{width:8px;height:8px;}
+  ::-webkit-scrollbar-track{background:rgba(255,255,255,0.03);}
+  ::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.12);border-radius:4px;}
+  ::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,0.2);}
+  .donut-chart{position:relative;width:64px;height:64px;border-radius:50%;background:conic-gradient(var(--chart-color) var(--chart-percent),rgba(255,255,255,0.08) 0);}
+  .donut-inner{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:48px;height:48px;background:var(--bg-color, #ffffff);border-radius:50%;display:flex;align-items:center;justify-content:center;}
+  body{font-family:'Outfit',sans-serif;background:var(--gradient-body, #f8fafc);}
+  .material-symbols-outlined{font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24;}
+
+  /* --- Light Theme Panel Overrides --- */
+  #admin-content .shadow-sm { box-shadow: var(--shadow-light) !important; border: 1px solid var(--light-border) !important; }
+  #admin-content .bg-white { background: var(--bg-color) !important; }
+  #admin-content th { background: var(--gradient-body) !important; color: #64748b !important; }
+  #admin-content .neu-skeleton { background: linear-gradient(90deg,rgba(0,0,0,0.02) 25%,rgba(0,0,0,0.05) 50%,rgba(0,0,0,0.02) 75%) !important; background-size: 200% 100%; animation: neuShimmer 1.5s infinite; }
+</style>
+<link rel="stylesheet" href="css/neumorphism.css"/>
+</head>
+<body class="text-slate-800 antialiased overflow-hidden">
+<div class="flex h-[100dvh] w-full overflow-hidden">
+
+  <!-- SIDEBAR -->
+  <aside class="hidden lg:flex w-64 flex-col z-20" style="background:var(--bg-color);backdrop-filter:blur(20px);border-right:1px solid rgba(99,102,241,0.15);">
+    <div class="flex h-20 items-center gap-3 px-6" style="border-bottom:1px solid rgba(99,102,241,0.1);">
+      <div class="flex h-10 w-10 items-center justify-center rounded-xl shadow-lg" style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);">
+        <span class="material-symbols-outlined text-2xl text-indigo-400">security</span>
+      </div>
+      <div>
+        <h1 class="text-lg font-bold tracking-wide text-slate-800">Acme Command</h1>
+        <span class="text-[10px] text-indigo-300/70 tracking-widest font-medium uppercase">Admin Portal</span>
+      </div>
+    </div>
+    <div class="flex flex-1 flex-col gap-1 overflow-y-auto px-4 py-6">
+      <div class="mb-2 px-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">Main Menu</div>
+      <button onclick="showSection('overview')" class="flex items-center gap-3 rounded-xl px-3 py-3 text-slate-600 hover:bg-indigo-50 hover:text-slate-800 transition-colors w-full text-left">
+        <span class="material-symbols-outlined text-indigo-400">dashboard</span><span>Dashboard</span>
+      </button>
+      <button onclick="showSection('users')" class="flex items-center gap-3 rounded-xl px-3 py-3 text-slate-600 hover:bg-indigo-50 hover:text-slate-800 transition-colors w-full text-left">
+        <span class="material-symbols-outlined text-indigo-400">group</span><span>Users</span>
+      </button>
+      <button onclick="showSection('issues')" class="flex items-center gap-3 rounded-xl px-3 py-3 text-slate-600 hover:bg-indigo-50 hover:text-slate-800 transition-colors w-full text-left">
+        <span class="material-symbols-outlined text-indigo-400">assignment</span><span>Issues</span>
+      </button>
+      <button onclick="showSection('audit')" class="flex items-center gap-3 rounded-xl px-3 py-3 text-slate-600 hover:bg-indigo-50 hover:text-slate-800 transition-colors w-full text-left">
+        <span class="material-symbols-outlined text-indigo-400">analytics</span><span>Poll Results</span>
+      </button>
+      
+      <div class="mt-6 mb-2 px-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">Polls</div>
+      <button onclick="showSection('polls')" class="flex items-center gap-3 rounded-xl px-3 py-3 text-slate-600 hover:bg-indigo-50 hover:text-slate-800 transition-colors w-full text-left">
+        <span class="material-symbols-outlined text-indigo-400">how_to_vote</span><span>Manage Polls</span>
+      </button>
+      <button onclick="openCreatePoll()" class="flex items-center gap-3 rounded-xl px-3 py-3 text-slate-600 hover:bg-indigo-50 hover:text-slate-800 transition-colors w-full text-left">
+        <span class="material-symbols-outlined text-indigo-400">add_circle</span><span>Create New Poll</span>
+      </button>
+    </div>
+    
+    <div class="p-4">
+      <div class="flex items-center gap-3 rounded-xl p-3" style="background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.15);">
+        <div class="h-10 w-10 rounded-full flex items-center justify-center text-slate-800 font-bold border-2" style="background:rgba(99,102,241,0.3);border-color:rgba(99,102,241,0.5);">A</div>
+        <div class="flex flex-col overflow-hidden">
+          <span id="sidebar-name" class="truncate text-sm font-bold text-slate-800">Admin</span>
+          <span class="truncate text-[10px] text-indigo-300/70">Administrator</span>
+        </div>
+        <button onclick="handleLogout()" class="ml-auto text-slate-500 hover:text-red-400 transition-colors" title="Sign Out">
+          <span class="material-symbols-outlined text-lg">logout</span>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="flex flex-1 flex-col h-full overflow-hidden" style="background:var(--bg-color, #ffffff);">
+
+    <!-- HEADER -->
+    <header class="flex h-20 flex-shrink-0 items-center justify-between px-8 animate-slide-up delay-100" style="background:rgba(255,255,255,0.7);backdrop-filter:blur(12px);border-bottom:1px solid rgba(99,102,241,0.12);">
+      <div class="flex items-center gap-4">
+        <h2 id="page-title" class="text-2xl font-bold text-slate-800">Overview</h2>
+        <div class="hidden md:flex items-center gap-2 text-sm text-slate-500 px-3 py-1.5 rounded-full" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);">
+          <span class="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span> System Online
+        </div>
+      </div>
+      <div class="flex items-center gap-4">
+        <div class="hidden sm:flex gap-2 mr-4">
+          <button onclick="exportIssuesCSV()" class="flex items-center gap-1.5 text-xs font-semibold text-slate-600 px-3 py-1.5 rounded-lg border transition-colors hover:text-slate-800" style="background:rgba(255,255,255,0.05);border-color:rgba(255,255,255,0.1);"><span class="material-symbols-outlined text-sm">download</span> Issues</button>
+          <button onclick="exportPollResultsCSV()" class="flex items-center gap-1.5 text-xs font-semibold text-slate-600 px-3 py-1.5 rounded-lg border transition-colors hover:text-slate-800" style="background:rgba(255,255,255,0.05);border-color:rgba(255,255,255,0.1);"><span class="material-symbols-outlined text-sm">poll</span> Results</button>
+        </div>
+        <span id="header-badge" class="px-3 py-1 rounded-full text-xs font-bold" style="background:rgba(99,102,241,0.15);color:#a5b4fc;border:1px solid rgba(99,102,241,0.3);">ADMIN</span>
+        <button onclick="handleLogout()" class="text-sm text-slate-500 hover:text-red-400 font-medium md:hidden">Sign Out</button>
+      </div>
+    </header>
+
+    <!-- Access Denied cover -->
+    <div id="access-denied" class="hidden flex-1 flex flex-col items-center justify-center gap-4 p-12 text-center animate-fade-in">
+      <span class="material-symbols-outlined text-6xl text-red-400">gpp_bad</span>
+      <h2 class="text-2xl font-bold text-slate-800">Access Denied</h2>
+      <p class="text-slate-500 max-w-sm">This console requires strict Administrative privileges. Your activity has been logged.</p>
+      <a href="index.html" class="mt-4 px-6 py-3 bg-slate-50 text-slate-800 font-semibold rounded-xl hover:bg-slate-700 transition-colors">← Return to Login</a>
+    </div>
+
+    <!-- Admin content -->
+    <div id="admin-content" class="flex flex-1 overflow-hidden">
+      <div class="flex-1 overflow-y-auto p-8 pb-24 md:pb-8 relative">
+
+        <!-- OVERVIEW SECTION -->
+        <div id="section-overview">
+          <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8 animate-slide-up delay-200">
+            <div class="rounded-2xl bg-white p-6 shadow-sm border border-slate-100 hover:-translate-y-1 transition-all">
+              <div class="flex justify-between items-start">
+                <div>
+                  <p class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Total Users</p>
+                  <h3 id="stat-users" class="text-3xl font-bold text-slate-800"><span class="neu-skeleton inline-block w-12 h-8 rounded-lg"></span></h3>
+                </div>
+                <div class="donut-chart" style="--chart-color:#0d9488;--chart-percent:60%;">
+                  <div class="donut-inner"><span class="material-symbols-outlined text-teal-600">group</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="rounded-2xl bg-white p-6 shadow-sm border border-slate-100 hover:-translate-y-1 transition-all">
+              <div class="flex justify-between items-start">
+                <div>
+                  <p class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Open Issues</p>
+                  <h3 id="stat-open" class="text-3xl font-bold text-slate-800"><span class="neu-skeleton inline-block w-12 h-8 rounded-lg"></span></h3>
+                </div>
+                <div class="donut-chart" style="--chart-color:#f97316;--chart-percent:65%;">
+                  <div class="donut-inner"><span class="material-symbols-outlined text-orange-500">assignment</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="rounded-2xl bg-white p-6 shadow-sm border border-slate-100 hover:-translate-y-1 transition-all">
+              <div class="flex justify-between items-start">
+                <div>
+                  <p class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Resolved</p>
+                  <h3 id="stat-resolved" class="text-3xl font-bold text-slate-800"><span class="neu-skeleton inline-block w-12 h-8 rounded-lg"></span></h3>
+                </div>
+                <div class="donut-chart" style="--chart-color:#10b981;--chart-percent:80%;">
+                  <div class="donut-inner"><span class="material-symbols-outlined text-emerald-600">check_circle</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="rounded-2xl bg-white p-6 shadow-sm border border-slate-100 hover:-translate-y-1 transition-all">
+              <div class="flex justify-between items-start">
+                <div>
+                  <p class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Active Polls</p>
+                  <h3 id="stat-polls" class="text-3xl font-bold text-slate-800"><span class="neu-skeleton inline-block w-12 h-8 rounded-lg"></span></h3>
+                </div>
+                <div class="donut-chart" style="--chart-color:#3b82f6;--chart-percent:40%;">
+                  <div class="donut-inner"><span class="material-symbols-outlined text-blue-500">how_to_vote</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="rounded-2xl bg-white p-8 shadow-sm border border-slate-100 animate-slide-up delay-300">
+            <h3 class="text-xl font-bold text-slate-800 mb-2">Welcome to your Command Center</h3>
+            <p class="text-slate-500 text-sm max-w-2xl mb-6">Use the sidebar to manage users, suspend malicious accounts, resolve issues securely, review encrypted document attachments, and manage active polling systems.</p>
+            <div class="flex gap-4">
+              <button onclick="showSection('users')" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-semibold transition-colors border border-slate-200">Manage Users</button>
+              <button onclick="showSection('issues')" class="px-5 py-2.5 bg-teal-500 hover:bg-teal-400 rounded-lg text-sm font-semibold transition-colors shadow-lg shadow-teal-500/30 text-slate-800 border-0">Review Issues</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ISSUES SECTION -->
+        <div id="section-issues" class="hidden">
+          <div class="overflow-hidden rounded-2xl bg-white border border-slate-200 shadow-sm animate-slide-up delay-200">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-sm whitespace-nowrap">
+                <thead class="bg-slate-50 border-b border-slate-100 text-slate-500 font-semibold uppercase tracking-wider text-xs">
+                  <tr>
+                    <th class="px-6 py-4">Reporter / Date</th>
+                    <th class="px-6 py-4">Category</th>
+                    <th class="px-6 py-4">Description</th>
+                    <th class="px-6 py-4 text-center">Docs</th>
+                    <th class="px-6 py-4">Status</th>
+                    <th class="px-6 py-4">Admin Controls</th>
+                  </tr>
+                </thead>
+                <tbody id="issues-tbody" class="divide-y divide-slate-100">
+                  <tr><td colspan="6" class="px-6 py-10 text-center"><span class="neu-skeleton h-20 w-full block rounded-xl"></span></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- USERS SECTION -->
+        <div id="section-users" class="hidden">
+          <div class="overflow-hidden rounded-2xl bg-white border border-slate-200 shadow-sm animate-slide-up delay-200">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-sm whitespace-nowrap">
+                <thead class="bg-slate-50 border-b border-slate-100 text-slate-500 font-semibold uppercase tracking-wider text-xs">
+                  <tr>
+                    <th class="px-6 py-4">Name / Email</th>
+                    <th class="px-6 py-4">Status</th>
+                    <th class="px-6 py-4">Role</th>
+                    <th class="px-6 py-4">Joined</th>
+                    <th class="px-6 py-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="users-tbody" class="divide-y divide-slate-100">
+                  <tr><td colspan="5" class="px-6 py-10 text-center text-slate-500">Loading users…</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- POLLS SECTION -->
+        <div id="section-polls" class="hidden">
+          <div class="mb-4 flex justify-between items-center animate-slide-in-right delay-100">
+            <h3 class="font-bold text-slate-700">All Master Polls</h3>
+            <button onclick="openCreatePoll()" class="text-sm font-semibold bg-teal-100 text-teal-700 px-4 py-2 rounded-lg hover:bg-teal-200 transition-colors">+ New Poll</button>
+          </div>
+          <div class="overflow-hidden rounded-2xl bg-white border border-slate-200 shadow-sm animate-slide-up delay-200">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-sm whitespace-nowrap">
+                <thead class="bg-slate-50 border-b border-slate-100 text-slate-500 font-semibold uppercase tracking-wider text-xs">
+                  <tr>
+                    <th class="px-6 py-4">Title</th>
+                    <th class="px-6 py-4">Start Time</th>
+                    <th class="px-6 py-4">End Time</th>
+                    <th class="px-6 py-4">Status</th>
+                    <th class="px-6 py-4 text-right">Delete</th>
+                  </tr>
+                </thead>
+                <tbody id="polls-tbody" class="divide-y divide-slate-100">
+                  <tr><td colspan="5" class="px-6 py-10 text-center text-slate-500">Loading polls…</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- POLL RESULTS SECTION (Replaced Audit) -->
+        <div id="section-audit" class="hidden">
+          <div class="overflow-hidden rounded-2xl bg-white border border-slate-200 shadow-sm animate-slide-up delay-200">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-sm whitespace-nowrap">
+                <thead class="bg-slate-50 border-b border-slate-100 text-slate-500 font-semibold uppercase tracking-wider text-xs">
+                  <tr>
+                    <th class="px-6 py-4">Poll Question</th>
+                    <th class="px-6 py-4 text-center">Total Votes</th>
+                    <th class="px-6 py-4">Top Option</th>
+                    <th class="px-6 py-4">Status</th>
+                    <th class="px-6 py-4">Created At</th>
+                    <th class="px-6 py-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="poll-results-tbody" class="divide-y divide-slate-100">
+                  <tr><td colspan="6" class="px-6 py-10 text-center"><span class="neu-skeleton h-20 w-full block rounded-xl"></span></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- ─── Mobile Bottom Nav (Admin) ─── -->
+  <nav class="lg:hidden neu-bottom-nav fixed bottom-0 w-full flex justify-around items-center h-16 px-4 z-50 pb-safe bg-teal-600 shadow-lg border-t border-teal-500">
+    <button onclick="showSection('overview')" class="flex flex-col items-center justify-center w-16 h-full text-teal-50">
+      <span class="material-symbols-outlined text-2xl mb-1">dashboard</span>
+      <span class="text-[10px] font-bold">Home</span>
+    </button>
+    <button onclick="showSection('issues')" class="flex flex-col items-center justify-center w-16 h-full text-teal-50">
+      <span class="material-symbols-outlined text-2xl mb-1">assignment</span>
+      <span class="text-[10px] font-bold">Issues</span>
+    </button>
+    <button onclick="showSection('polls')" class="flex flex-col items-center justify-center w-16 h-full text-teal-50">
+      <span class="material-symbols-outlined text-2xl mb-1">how_to_vote</span>
+      <span class="text-[10px] font-bold">Polls</span>
+    </button>
+  </nav>
+
+<!-- CREATE POLL MODAL -->
+<div id="modal-poll" class="hidden fixed inset-0 bg-white/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 transform transition-all">
+    <div class="flex justify-between items-center mb-6">
+      <h3 class="text-xl font-bold text-slate-800">Launch New Poll</h3>
+      <button onclick="closeCreatePoll()" class="text-slate-500 hover:text-slate-700 transition-colors"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    <form id="poll-form" onsubmit="handleCreatePoll(event)" class="space-y-4">
+      <div id="poll-alert" class="hidden rounded-lg px-4 py-3 text-sm font-medium"></div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1">Question / Title <span class="text-red-500">*</span></label>
+        <input id="poll-title" type="text" placeholder="e.g. New Office Location" class="w-full border border-slate-300 rounded-lg px-4 py-2 text-sm focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none" required/>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1">Description (Optional)</label>
+        <textarea id="poll-desc" placeholder="Details about this vote…" class="w-full border border-slate-300 rounded-lg px-4 py-2 text-sm focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none h-16 resize-y"></textarea>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Start (<span class="text-xs text-slate-500">Leave empty for NOW</span>)</label>
+          <input id="poll-start" type="datetime-local" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-teal-500 text-slate-600"/>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">End</label>
+          <input id="poll-end" type="datetime-local" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-teal-500 text-slate-600" required/>
+        </div>
+      </div>
+      <div class="pt-2">
+        <label class="block text-sm font-medium text-slate-700 mb-2">Voting Options <span class="text-slate-500 text-xs">(min 2)</span></label>
+        <div id="poll-options" class="space-y-2">
+          <input type="text" placeholder="Option A" class="poll-opt w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none" required/>
+          <input type="text" placeholder="Option B" class="poll-opt w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none" required/>
+        </div>
+        <button type="button" onclick="addPollOption()" class="mt-3 text-xs text-teal-600 font-bold uppercase tracking-wider hover:text-teal-700 flex items-center gap-1"><span class="material-symbols-outlined text-sm">add</span> Add Option</button>
+      </div>
+      <div class="flex justify-end gap-3 pt-6 border-t border-slate-100 mt-6">
+        <button type="button" onclick="closeCreatePoll()" class="px-4 py-2 text-sm text-slate-500 hover:text-slate-700 font-medium">Cancel</button>
+        <button id="poll-submit-btn" type="submit" class="px-6 py-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-bold rounded-xl transition-colors shadow-lg shadow-teal-500/20">Create Poll</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ISSUE DETAIL MODAL -->
+<div id="modal-issue" class="hidden fixed inset-0 bg-white/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col transform transition-all">
+    <div class="flex justify-between items-center p-6 border-b border-slate-100">
+      <h3 class="text-xl font-bold text-slate-800">Issue Details</h3>
+      <button onclick="closeModal('issue')" class="text-slate-500 hover:text-slate-700 transition-colors"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    <div id="issue-modal-body" class="p-8 overflow-y-auto space-y-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Status</p>
+          <div id="issue-v-status" class="inline-block px-3 py-1 rounded-full text-xs font-bold border"></div>
+        </div>
+        <div>
+          <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Category</p>
+          <p id="issue-v-cat" class="text-sm font-bold text-slate-700"></p>
+        </div>
+      </div>
+      <div>
+        <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Description</p>
+        <p id="issue-v-desc" class="text-slate-600 leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-100"></p>
+      </div>
+      <div id="issue-v-media" class="hidden">
+        <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Attachments</p>
+        <div id="media-container" class="mt-2"></div>
+      </div>
+      <hr class="border-slate-100"/>
+      <div class="space-y-4">
+        <h4 class="text-sm font-bold text-slate-800">Update Issue</h4>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <select id="issue-u-status" class="border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-teal-500">
+            <option value="PENDING">Pending</option>
+            <option value="IN_PROGRESS">In Progress</option>
+            <option value="RESOLVED">Resolved</option>
+            <option value="REJECTED">Rejected</option>
+          </select>
+          <button id="btn-save-issue" class="bg-teal-600 text-white font-bold py-2 px-4 rounded-lg text-sm hover:bg-teal-700 transition-colors shadow-lg shadow-teal-500/20">Save Status</button>
+        </div>
+        <textarea id="issue-u-remarks" placeholder="Add moderator remarks…" class="w-full border border-slate-300 rounded-lg px-4 py-3 text-sm focus:border-teal-500 outline-none h-20 resize-none"></textarea>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- POLL RESULTS MODAL -->
+<div id="modal-results" class="hidden fixed inset-0 bg-white/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 transform transition-all">
+    <div class="flex justify-between items-center mb-6">
+      <h3 class="text-xl font-bold text-slate-800">Poll Statistics</h3>
+      <button onclick="closeModal('results')" class="text-slate-500 hover:text-slate-700 transition-colors"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    <div id="results-modal-body" class="space-y-6">
+      <div>
+        <h4 id="res-v-title" class="text-lg font-extrabold text-slate-800"></h4>
+        <p id="res-v-total" class="text-xs font-bold text-slate-500 mt-1 uppercase tracking-widest"></p>
+      </div>
+      <div id="res-v-bars" class="space-y-4"></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<script src="js/firebase-config.js"></script>
+
+<script>
+  if(!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+  const db = firebase.firestore();
+  let currentUser = null, currentRole = null;
+  const userCache = {}; // Module-scope: persists across loadIssues() calls
+  const sectionLoadedAt = {}; // Track when each section was last loaded
+  const SECTION_CACHE_TTL = 60000; // 60 seconds
+  function invalidateSection(...names) { names.forEach(n => delete sectionLoadedAt[n]); }
+
+  function closeModal(name) { document.getElementById(`modal-${name}`).classList.add('hidden'); }
+
+  async function viewIssueDetails(id) {
+    const modal = document.getElementById('modal-issue');
+    const body = document.getElementById('issue-modal-body');
+    const uStatus = document.getElementById('issue-u-status');
+    const uRemarks = document.getElementById('issue-u-remarks');
+    const saveBtn = document.getElementById('btn-save-issue');
+    
+    saveBtn.onclick = null; // Clear previous
+    modal.classList.remove('hidden');
+    
+    try {
+      const doc = await db.collection('issues').doc(id).get();
+      if (!doc.exists) return;
+      const d = doc.data();
+      
+      const statusColor = {PENDING:'orange',IN_PROGRESS:'blue',RESOLVED:'emerald',REJECTED:'red'};
+      const c = statusColor[d.status]||'slate';
+      
+      const stEl = document.getElementById('issue-v-status');
+      stEl.textContent = d.status;
+      stEl.className = `inline-block px-3 py-1 rounded-full text-[10px] font-bold border border-${c}-200 bg-${c}-50 text-${c}-700`;
+      
+      document.getElementById('issue-v-cat').textContent = d.category || 'General';
+      document.getElementById('issue-v-desc').textContent = d.description;
+      uStatus.value = d.status;
+      uRemarks.value = d.moderatorRemarks || '';
+
+      // Fetch Documents
+      const mediaBox = document.getElementById('issue-v-media');
+      const mediaContainer = document.getElementById('media-container');
+      mediaBox.classList.add('hidden');
+      mediaContainer.innerHTML = '';
+      
+      const docSnap = await db.collection('documents').where('issueId', '==', id).get();
+      if (!docSnap.empty) {
+        mediaBox.classList.remove('hidden');
+        docSnap.forEach(doc => {
+          const dd = doc.data();
+          const isImg = /\.(jpg|jpeg|png|gif|webp)$/i.test(dd.fileName);
+          mediaContainer.innerHTML += `
+            <div class="p-3 bg-white rounded-xl border border-slate-100 shadow-sm flex items-center justify-between gap-3">
+              <div class="flex items-center gap-2 overflow-hidden">
+                <span class="material-symbols-outlined text-slate-500">${isImg?'image':'description'}</span>
+                <span class="text-xs font-bold text-slate-600 truncate">${dd.fileName}</span>
+              </div>
+              <a href="${dd.secureUrl}" target="_blank" class="text-teal-600 hover:text-teal-700 font-bold text-[10px] uppercase tracking-wider">Open</a>
+            </div>
+          `;
+        });
+      }
+
+      saveBtn.onclick = async () => {
+        saveBtn.disabled = true; saveBtn.textContent = 'Saving…';
+        try {
+          await db.collection('issues').doc(id).update({
+            status: uStatus.value,
+            moderatorRemarks: uRemarks.value,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          modal.classList.add('hidden');
+          invalidateSection('issues');
+          loadIssues();
+          sectionLoadedAt['issues'] = Date.now();
+          loadStats();
+        } catch(e) { alert("Failed to update issue"); }
+        finally { saveBtn.disabled = false; saveBtn.textContent = 'Save Status'; }
+      };
+    } catch(e) { console.error(e); }
+  }
+
+  async function viewPollResults(id) {
+    const modal = document.getElementById('modal-results');
+    modal.classList.remove('hidden');
+    const titleEl = document.getElementById('res-v-title');
+    const totalEl = document.getElementById('res-v-total');
+    const barsEl = document.getElementById('res-v-bars');
+    
+    barsEl.innerHTML = '<p class="text-center text-slate-500 py-8">Loading analytics…</p>';
+    
+    try {
+      const pDoc = await db.collection('polls').doc(id).get();
+      const poll = pDoc.data();
+      titleEl.textContent = poll.title;
+      
+      const optsSnap = await db.collection('polls').doc(id).collection('options').get();
+      const options = optsSnap.docs.map(o => ({ id:o.id, ...o.data(), votes:0 }));
+      
+      const votesSnap = await db.collection('pollVotes').where('pollId','==',id).get();
+      const total = votesSnap.size;
+      totalEl.textContent = `${total} Total Votes Cast`;
+      
+      votesSnap.forEach(v => {
+        const o = options.find(opt => opt.id === v.data().optionId);
+        if (o) o.votes++;
+      });
+      
+      barsEl.innerHTML = options.sort((a,b)=>b.order-a.order).map(o => {
+        const pct = total === 0 ? 0 : Math.round((o.votes/total)*100);
+        return `<div class="space-y-1">
+          <div class="flex justify-between text-xs font-bold text-slate-600 px-1">
+            <span>${o.text}</span>
+            <span>${pct}% (${o.votes})</span>
+          </div>
+          <div class="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+            <div class="h-full bg-teal-500 rounded-full" style="width:${pct}%"></div>
+          </div>
+        </div>`;
+      }).join('');
+      
+    } catch(e) { console.error(e); barsEl.innerHTML = 'Failed to load results'; }
+  }
+
+  firebase.auth().onAuthStateChanged(async user => {
+    if (!user) { window.location.href = 'index.html'; return; }
+    currentUser = user;
+
+    const ud = await db.collection('users').doc(user.uid).get();
+    currentRole = ud.exists ? ud.data().role : 'USER';
+
+    if (currentRole !== 'ADMIN' && currentRole !== 'AUTHORITY') {
+      document.getElementById('admin-content').classList.add('hidden');
+      document.getElementById('access-denied').classList.remove('hidden');
+      firebase.auth().signOut();
+      return;
+    }
+    
+    document.getElementById('sidebar-name').textContent = user.displayName || ud.data().name || user.email.split('@')[0];
+    loadStats();
+  });
+
+  function showSection(name) {
+    ['overview','issues','users','polls','audit'].forEach(s => document.getElementById(`section-${s}`).classList.add('hidden'));
+    document.getElementById(`section-${name}`).classList.remove('hidden');
+    document.getElementById('page-title').textContent = name === 'overview' ? 'Overview' : ((name==='audit'?'Poll Results':name).charAt(0).toUpperCase() + name.slice(1));
+    
+    const loadMap = { issues: loadIssues, users: loadUsers, audit: loadPollResults, polls: loadPolls };
+    const now = Date.now();
+    if (loadMap[name] && (!sectionLoadedAt[name] || now - sectionLoadedAt[name] > SECTION_CACHE_TTL)) {
+      loadMap[name]();
+      sectionLoadedAt[name] = now;
+    }
+  }
+
+  async function loadStats() {
+    const issSnap = await db.collection('issues').get();
+    let open=0, resolved=0;
+    issSnap.forEach(d => { if (d.data().status==='RESOLVED') resolved++; else open++; });
+    document.getElementById('stat-open').textContent = open;
+    document.getElementById('stat-resolved').textContent = resolved;
+    const usSnap = await db.collection('users').get();
+    document.getElementById('stat-users').textContent = usSnap.size;
+    const pSnap = await db.collection('polls').where('isActive','==',true).get();
+    document.getElementById('stat-polls').textContent = pSnap.size;
+  }
+
+  async function loadIssues() {
+    const tbody = document.getElementById('issues-tbody');
+    tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-10 text-center text-slate-500">Loading issues…</td></tr>';
+    
+    const snap = await db.collection('issues').orderBy('createdAt','desc').limit(50).get();
+    if (snap.empty) { tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-10 text-center text-slate-500">No issues found.</td></tr>'; return; }
+    
+    const statusColor = {PENDING:'orange',IN_PROGRESS:'blue',RESOLVED:'emerald',REJECTED:'red'};
+    // userCache is module-scoped — persists across calls
+    
+    const rows = await Promise.all(snap.docs.map(async doc => {
+      const d = doc.data();
+      const c = statusColor[d.status]||'slate';
+      const date = d.createdAt ? new Date(d.createdAt.toDate()).toLocaleDateString() : '—';
+      const time = d.createdAt ? new Date(d.createdAt.toDate()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '';
+      
+      let authorName = 'Unknown User';
+      if (d.userId) {
+        if (!userCache[d.userId]) {
+          try {
+            const u = await db.collection('users').doc(d.userId).get();
+            if (u.exists) {
+              const ud = u.data();
+              userCache[d.userId] = ud.displayName || ud.name || ud.email || 'Unknown User';
+            } else {
+              userCache[d.userId] = 'Unknown User';
+            }
+          } catch(e) { userCache[d.userId] = 'Unknown User'; }
+        }
+        authorName = userCache[d.userId];
+      }
+      
+      return `<tr class="hover:bg-slate-50 transition-colors cursor-pointer" onclick="viewIssueDetails('${doc.id}')">
+        <td class="px-6 py-4">
+          <p class="font-bold text-sm text-slate-700">${esc(authorName)}</p>
+          <p class="text-[10px] text-slate-500 mt-0.5">${date} <span class="text-slate-600">|</span> ${time}</p>
+        </td>
+        <td class="px-6 py-4 font-semibold text-slate-700">${esc(d.category)}</td>
+        <td class="px-6 py-4 text-slate-500 whitespace-normal min-w-[200px] max-w-xs text-xs">
+          ${esc(d.description)}
+        </td>
+        <td class="px-6 py-4 text-center">
+          <button onclick="event.stopPropagation(); viewIssueDetails('${doc.id}')" class="p-1.5 rounded-lg bg-teal-50 text-teal-600 border border-teal-100 transition-colors tooltip" title="Full Details">
+            <span class="material-symbols-outlined text-sm">visibility</span>
+          </button>
+        </td>
+        <td class="px-6 py-4">
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-${c}-100 border border-${c}-200 px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wide text-${c}-700 shadow-sm">${d.status||'PENDING'}</span>
+        </td>
+        <td class="px-6 py-4" onclick="event.stopPropagation()">
+          <select onchange="updateStatus(this, '${doc.id}', '${d.status}')" class="text-xs border border-slate-300 shadow-sm rounded-lg px-2 py-1.5 font-medium text-slate-600 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none bg-white cursor-pointer hover:bg-slate-50 transition-colors">
+            <option ${d.status==='PENDING'?'selected':''} value="PENDING">Pending</option>
+            <option ${d.status==='IN_PROGRESS'?'selected':''} value="IN_PROGRESS">In Progress</option>
+            <option ${d.status==='RESOLVED'?'selected':''} value="RESOLVED">Resolved</option>
+            <option ${d.status==='REJECTED'?'selected':''} value="REJECTED">Rejected</option>
+          </select>
+        </td>
+      </tr>`;
+    }));
+    tbody.innerHTML = rows.join('');
+  }
+
+  async function updateStatus(selectEl, issueId, oldStatus) {
+    const newStatus = selectEl.value;
+    const remarks = prompt(`Updating status to ${newStatus}.\n\nEnter remarks/reason for this change (optional but recommended for accountability):`);
+    
+    if (remarks === null) {
+      selectEl.value = oldStatus; // user clicked cancel
+      return;
+    }
+
+    const previousText = selectEl.options[selectEl.selectedIndex].text;
+    selectEl.options[selectEl.selectedIndex].text = 'Saving...';
+    selectEl.disabled = true;
+
+    try {
+      const updateData = { status: newStatus, updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
+      if (remarks.trim()) updateData.remarks = remarks.trim();
+      else updateData.remarks = firebase.firestore.FieldValue.delete();
+
+      await db.collection('issues').doc(issueId).update(updateData);
+      
+      await db.collection('auditLogs').add({
+        action: 'STATUS_UPDATED',
+        performedBy: currentUser.uid,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+        metadata: { issueId, oldStatus, newStatus, remarks: remarks.trim() }
+      });
+
+      invalidateSection('issues');
+      loadIssues();
+      sectionLoadedAt['issues'] = Date.now();
+      loadStats();
+    } catch(e) { 
+      alert('Update failed: ' + e.message); 
+      selectEl.value = oldStatus;
+      selectEl.options[selectEl.selectedIndex].text = previousText;
+      selectEl.disabled = false;
+    }
+  }
+
+  async function viewDocument(issueId) {
+    try {
+      const snap = await db.collection("documents").where("issueId", "==", issueId).get();
+      if(snap.empty) { 
+        alert("No secure documents attached to this issue ID."); 
+        return; 
+      }
+      
+      const docs = snap.docs.map(d => d.data());
+      // For simplicity, launch the first document in a secure new tab
+      const url = docs[0].secureUrl;
+      if (url) {
+        window.open(url, '_blank', 'noopener,noreferrer');
+      } else {
+        alert("Document data is corrupted or unavailable.");
+      }
+    } catch(e) { 
+      alert("Error retrieving document authorization: " + e.message); 
+    }
+  }
+
+  async function loadUsers() {
+    const tbody = document.getElementById('users-tbody');
+    tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-10 text-center text-slate-500">Loading users…</td></tr>';
+    const snap = await db.collection('users').orderBy('createdAt', 'desc').limit(50).get();
+    if (snap.empty) { tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-10 text-center text-slate-500">No users found.</td></tr>'; return; }
+    
+    tbody.innerHTML = snap.docs.map(doc => {
+      const d = doc.data();
+      const badge = {ADMIN:'teal',AUTHORITY:'blue',USER:'slate'}[d.role]||'slate';
+      // Treat undefined isActive as true for backwards compat
+      const isActive = d.isActive !== false; 
+      
+      return `<tr class="hover:bg-slate-50 transition-colors ${!isActive ? 'opacity-60' : ''}">
+        <td class="px-6 py-4">
+          <p class="font-semibold text-slate-700">${esc(d.displayName||d.name||'—')}</p>
+          <p class="text-xs text-slate-500 font-mono mt-0.5">${esc(d.email||'')}</p>
+        </td>
+        <td class="px-6 py-4">
+          ${isActive 
+            ? `<span class="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-600 text-[10px] font-bold px-2.5 py-1 rounded-md border border-emerald-200"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Active</span>`
+            : `<span class="inline-flex items-center gap-1.5 bg-red-50 text-red-600 text-[10px] font-bold px-2.5 py-1 rounded-md border border-red-200"><span class="w-1.5 h-1.5 rounded-full bg-red-500"></span> Suspended</span>`
+          }
+        </td>
+        <td class="px-6 py-4"><span class="inline-flex px-3 py-1 rounded-full text-[10px] font-extrabold tracking-widest bg-${badge}-100 text-${badge}-700 border border-${badge}-200 shadow-sm">${d.role||'USER'}</span></td>
+        <td class="px-6 py-4 text-slate-500 text-xs">${d.createdAt ? new Date(d.createdAt.toDate()).toLocaleDateString() : '—'}</td>
+        <td class="px-6 py-4 text-right space-x-2">
+          <select onchange="changeRole('${doc.id}',this.value, '${d.role||'USER'}')" class="text-xs border border-slate-300 shadow-sm rounded-lg px-2 py-1.5 font-medium text-slate-600 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none bg-white cursor-pointer hover:bg-slate-50 transition-colors">
+            <option ${d.role==='USER'?'selected':''} value="USER">USER</option>
+            <option ${d.role==='AUTHORITY'?'selected':''} value="AUTHORITY">AUTHORITY</option>
+            <option ${d.role==='ADMIN'?'selected':''} value="ADMIN">ADMIN</option>
+          </select>
+          <button onclick="toggleSuspend('${doc.id}', ${isActive})" class="px-3 py-1.5 text-xs font-bold rounded-lg transition-colors border shadow-sm ${isActive ? 'bg-white text-red-600 border-red-200 hover:bg-red-50' : 'bg-slate-50 text-slate-800 border-slate-200 hover:bg-slate-700'}">
+            ${isActive ? 'Suspend' : 'Reactivate'}
+          </button>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  async function changeRole(uid, role, oldRole) {
+    if(!confirm(`Change role to ${role}?`)) {
+      // Revert select (requires finding the select by querying, or passing 'this' - since we didn't pass this, let's just reload)
+      loadUsers();
+      return;
+    }
+    try {
+      await db.collection('users').doc(uid).update({ role });
+      invalidateSection('users');
+      loadUsers();
+      sectionLoadedAt['users'] = Date.now();
+    } catch(e) { alert('Role change failed: ' + e.message); loadUsers(); }
+  }
+
+  async function toggleSuspend(uid, isCurrentlyActive) {
+    if(!confirm(`Are you sure you want to ${isCurrentlyActive ? 'SUSPEND' : 'REACTIVATE'} this user account?`)) return;
+    try {
+      await db.collection("users").doc(uid).update({
+        isActive: !isCurrentlyActive
+      });
+      invalidateSection('users');
+      loadUsers();
+      sectionLoadedAt['users'] = Date.now();
+    } catch(e) { alert('Action failed: ' + e.message); }
+  }
+
+  async function loadPolls() {
+    const tbody = document.getElementById('polls-tbody');
+    tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-10 text-center text-slate-500">Loading polls…</td></tr>';
+    const snap = await db.collection('polls').orderBy('startTime','desc').get();
+    if (snap.empty) { tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-10 text-center text-slate-500">No polls found.</td></tr>'; return; }
+    
+    tbody.innerHTML = snap.docs.map(doc => {
+      const d = doc.data();
+      const isActiveNow = new Date() >= new Date(d.startTime) && new Date() <= new Date(d.endTime);
+      return `<tr class="hover:bg-slate-50 transition-colors">
+        <td class="px-6 py-4 font-semibold text-slate-700">${esc(d.title)}</td>
+        <td class="px-6 py-4 text-xs font-mono text-slate-500">${new Date(d.startTime).toLocaleString()}</td>
+        <td class="px-6 py-4 text-xs font-mono text-slate-500">${new Date(d.endTime).toLocaleString()}</td>
+        <td class="px-6 py-4">
+          <span class="inline-flex px-3 py-1.5 rounded-full text-[10px] font-extrabold tracking-widest border shadow-sm ${d.isActive && isActiveNow ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-50 text-slate-500 border-slate-200'}">
+            ${d.isActive ? (isActiveNow ? 'LIVE' : 'SCHEDULED') : 'CLOSED'}
+          </span>
+        </td>
+        <td class="px-6 py-4 text-right flex justify-end gap-2">
+          <button onclick="viewPollResults('${doc.id}')" class="p-1.5 text-teal-600 hover:bg-teal-50 rounded-lg transition-colors tooltip" title="View Analytics">
+            <span class="material-symbols-outlined text-base">monitoring</span>
+          </button>
+          <button onclick="deletePoll('${doc.id}', '${esc(d.title)}')" class="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors tooltip" title="Permanently Delete Poll">
+            <span class="material-symbols-outlined text-base">delete</span>
+          </button>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  async function deletePoll(pollId, title) {
+    if(!confirm(`WARNING: You are about to permanently delete the poll "${title}".\n\nThis will remove all voting data and cannot be undone.\n\nType 'OK' to proceed.`)) return;
+    try {
+      await db.collection('polls').doc(pollId).delete();
+      invalidateSection('polls', 'audit');
+      loadPolls();
+      sectionLoadedAt['polls'] = Date.now();
+      loadStats();
+    } catch(e) { alert('Deletion failed: ' + e.message); }
+  }
+
+  async function loadPollResults() {
+    const tbody = document.getElementById('poll-results-tbody');
+    tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-10 text-center text-slate-500">Aggregating real-time results…</td></tr>';
+    
+    try {
+      const snap = await db.collection('polls').orderBy('createdAt','desc').get();
+      if (snap.empty) { tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-10 text-center text-slate-500">No polls found.</td></tr>'; return; }
+      
+      const rows = await Promise.all(snap.docs.map(async pollDoc => {
+        const poll = pollDoc.data();
+        const pollId = pollDoc.id;
+        
+        // Fetch options and votes in parallel
+        const [optsSnap, votesSnap] = await Promise.all([
+          db.collection('polls').doc(pollId).collection('options').get(),
+          db.collection('pollVotes').where('pollId','==',pollId).get()
+        ]);
+        
+        const options = optsSnap.docs.map(o => ({ id:o.id, ...o.data(), votes:0 }));
+        const total = votesSnap.size;
+        
+        votesSnap.forEach(v => {
+          const o = options.find(opt => opt.id === v.data().optionId);
+          if (o) o.votes++;
+        });
+        
+        const winningOpt = options.length > 0 ? options.sort((a,b)=>b.votes-a.votes)[0] : null;
+        const winnerText = winningOpt && total > 0 ? `${winningOpt.text} (${Math.round((winningOpt.votes/total)*100)}%)` : '—';
+        
+        const date = poll.createdAt ? new Date(poll.createdAt.toDate()).toLocaleDateString() : '—';
+        const isActiveNow = poll.isActive && (!poll.endTime || new Date() < new Date(poll.endTime));
+        const statusClass = isActiveNow ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-50 text-slate-500 border-slate-200';
+        const statusLabel = poll.isActive ? (isActiveNow ? 'LIVE' : 'CLOSED (TIME)') : 'CLOSED (MANUAL)';
+
+        return `<tr class="hover:bg-slate-50 transition-colors">
+          <td class="px-6 py-4">
+            <p class="font-bold text-slate-700">${esc(poll.title)}</p>
+            <p class="text-[10px] text-slate-500 italic">${esc(poll.description || '')}</p>
+          </td>
+          <td class="px-6 py-4 text-center font-extrabold text-teal-600 bg-teal-50/30">${total}</td>
+          <td class="px-6 py-4">
+            <span class="text-xs font-semibold text-slate-600">${esc(winnerText)}</span>
+          </td>
+          <td class="px-6 py-4">
+            <span class="inline-flex px-2 py-1 rounded-full text-[9px] font-extrabold tracking-tight border ${statusClass}">
+              ${statusLabel}
+            </span>
+          </td>
+          <td class="px-6 py-4 text-xs text-slate-500">${date}</td>
+          <td class="px-6 py-4 text-right">
+            <button onclick="viewPollResults('${pollId}')" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors shadow-sm">
+              Analyze
+            </button>
+          </td>
+        </tr>`;
+      }));
+      
+      tbody.innerHTML = rows.join('');
+    } catch(e) { 
+      console.error(e);
+      tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-10 text-center text-red-500">Failed to aggregate data.</td></tr>'; 
+    }
+  }
+
+  // EXPORT UTILITIES
+  async function exportIssuesCSV() {
+    try {
+      const btn = event.currentTarget; const oldHtml = btn.innerHTML; btn.innerHTML = "Exporting..."; btn.disabled=true;
+      const snap = await db.collection("issues").get();
+      let csv = "ID,Category,Description,Status,CreatedAt,Remarks\n";
+      snap.forEach(doc => {
+          const d = doc.data();
+          const date = d.createdAt ? new Date(d.createdAt.toDate()).toISOString() : '';
+          csv += `"${doc.id}","${escCSV(d.category)}","${escCSV(d.description)}","${d.status}","${date}","${escCSV(d.remarks)}"\n`;
+      });
+      downloadCSV(csv, `Acme_Issues_Export_${new Date().getTime()}.csv`);
+      btn.innerHTML = oldHtml; btn.disabled=false;
+    } catch(e) { alert("Export failed: " + e.message); }
+  }
+  
+  async function exportPollResultsCSV() {
+    try {
+      const btn = event.currentTarget; const oldHtml = btn.innerHTML; btn.innerHTML = "Exporting..."; btn.disabled=true;
+      const snap = await db.collection("polls").get();
+      let csv = "PollID,Question,TotalVotes,WinningOption,WinningVotes,Status,CreatedAt\n";
+      
+      for(const doc of snap.docs) {
+        const d = doc.data();
+        const pollId = doc.id;
+        const optsSnap = await db.collection('polls').doc(pollId).collection('options').get();
+        const options = optsSnap.docs.map(o => ({ id:o.id, ...o.data(), votes:0 }));
+        const votesSnap = await db.collection('pollVotes').where('pollId','==',pollId).get();
+        const total = votesSnap.size;
+        votesSnap.forEach(v => {
+          const o = options.find(opt => opt.id === v.data().optionId);
+          if (o) o.votes++;
+        });
+        const winner = options.length > 0 ? options.sort((a,b)=>b.votes-a.votes)[0] : null;
+        const ts = d.createdAt ? new Date(d.createdAt.toDate()).toISOString() : '';
+        const status = d.isActive ? 'ACTIVE' : 'CLOSED';
+        
+        csv += `"${pollId}","${escCSV(d.title)}","${total}","${escCSV(winner?winner.text:'—')}","${winner?winner.votes:0}","${status}","${ts}"\n`;
+      }
+      
+      downloadCSV(csv, `Acme_PollResults_Export_${new Date().getTime()}.csv`);
+      btn.innerHTML = oldHtml; btn.disabled=false;
+    } catch(e) { alert("Export failed: " + e.message); btn.disabled=false; btn.innerHTML = "Error"; }
+  }
+
+  function downloadCSV(csv, filename) {
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.setAttribute('hidden', '');
+    a.setAttribute('href', url);
+    a.setAttribute('download', filename);
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+
+  function escCSV(str) {
+    return (str || '').replace(/"/g, '""');
+  }
+
+  // POLL CREATION
+  function openCreatePoll() { document.getElementById('modal-poll').classList.remove('hidden'); }
+  function closeCreatePoll() { document.getElementById('modal-poll').classList.add('hidden'); }
+  function addPollOption() {
+    const n = document.querySelectorAll('.poll-opt').length + 1;
+    const input = document.createElement('input');
+    input.type='text'; input.placeholder=`Option ${n} (e.g. Strongly Agree)`;
+    input.className='poll-opt w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none';
+    document.getElementById('poll-options').appendChild(input);
+  }
+
+  async function handleCreatePoll(e) {
+    e.preventDefault();
+    const btn = document.getElementById('poll-submit-btn');
+    const title = document.getElementById('poll-title').value.trim();
+    const desc = document.getElementById('poll-desc').value.trim();
+    const startStr = document.getElementById('poll-start').value;
+    const endStr = document.getElementById('poll-end').value;
+    const options = Array.from(document.querySelectorAll('.poll-opt')).map(i=>({text:i.value.trim()})).filter(o=>o.text);
+    
+    if (options.length < 2) { showPollAlert('You must provide at least 2 valid poll options.','error'); return; }
+    
+    // If start is omitted, default to NOW
+    const start = startStr ? startStr : new Date().toISOString().slice(0, 16);
+    
+    btn.disabled=true; btn.textContent='Provisioning Poll…';
+    try {
+      const pollRef = await db.collection('polls').add({ 
+        title, 
+        description: desc, 
+        startTime: start, 
+        endTime: endStr,
+        isActive: true,
+        createdBy: currentUser.uid,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      // Write options to subcollection
+      const batch = db.batch();
+      options.forEach((opt, idx) => {
+        const optRef = db.collection(`polls/${pollRef.id}/options`).doc();
+        batch.set(optRef, { 
+          text: opt.text, 
+          votes: 0,
+          index: idx,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      });
+      await batch.commit();
+
+      closeCreatePoll();
+      loadStats();
+      if(!document.getElementById('section-polls').classList.contains('hidden')) loadPolls();
+    } catch(err) {
+      showPollAlert(err.message,'error');
+      btn.disabled=false; btn.textContent='Create Poll';
+    }
+  }
+
+  function showPollAlert(msg, type) {
+    const el = document.getElementById('poll-alert');
+    el.className = `rounded-lg px-4 py-3 text-sm font-medium ${type==='error'?'bg-red-50 text-red-700 border border-red-200':'bg-green-50 text-green-700 border border-green-200'}`;
+    el.textContent = msg; el.classList.remove('hidden');
+  }
+
+  async function handleLogout() {
+    await firebase.auth().signOut(); window.location.href='index.html';
+  }
+
+  function esc(s) {
+    return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+</script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch(err => {
+        console.log('SW registration failed: ', err);
+      });
+    });
+  }
+</script>
+</body></html>

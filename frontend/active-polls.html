@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Active Polls - Feedback Portal</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-functions.js"></script>
+<script src="js/firebase-config.js"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: { primary: "#6366f1" },
+        fontFamily: { "display": ["Outfit", "sans-serif"], "body": ["Inter", "sans-serif"] },
+      },
+    },
+  }
+</script>
+<style>
+    body { font-family: 'Outfit', sans-serif; background: var(--gradient-body); color: var(--light-text); min-height: 100dvh; overflow: hidden; }
+    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    
+    .spinner { display:inline-block;width:24px;height:24px;border:3px solid rgba(99,102,241,0.2);border-top-color:#6366f1;border-radius:50%;animation:spin 1s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.2); }
+
+  .skeleton {
+    background: linear-gradient(90deg, #f0f4f8 25%, #e2e8f0 50%, #f0f4f8 75%);
+    background-size: 200% 100%;
+    animation: placeholderShimmer 1.5s infinite;
+    border-radius: 8px;
+  }
+  @keyframes placeholderShimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+</style>
+<link rel="stylesheet" href="css/neumorphism.css"/>
+<script src="js/sidebar-cache.js"></script>
+</head>
+<body class="antialiased flex h-[100dvh] w-full">
+
+  <!-- ─── Sidebar Navigation ─── -->
+  <nav class="hidden md:flex w-72 flex-col justify-between h-full relative z-20 neu-sidebar border-r border-[var(--light-border)]">
+    <div class="p-8">
+      <div class="flex items-center gap-3 mb-8 px-1 py-1 text-left">
+        <div id="user-avatar" class="flex-shrink-0 h-11 w-11 bg-[var(--light-accent)] text-white rounded-full flex items-center justify-center text-sm font-bold shadow-inner overflow-hidden border border-[var(--light-border)]">
+          <span class="spinner w-5 h-5 border-white border-t-transparent border-2"></span>
+        </div>
+        <div class="flex flex-col min-w-0 flex-1">
+          <p id="user-name-sidebar" class="text-[0.95rem] font-bold truncate text-[var(--light-text)] leading-tight">Loading…</p>
+          <p id="user-email-sidebar" class="text-[0.75rem] font-medium text-[var(--light-text-muted)] truncate leading-tight"></p>
+        </div>
+      </div>
+      <div class="flex flex-col gap-2">
+        <a class="flex items-center gap-4 px-4 py-3.5 neu-nav-item rounded-xl" href="dashboard.html">
+          <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1">space_dashboard</span>
+          <span class="font-bold text-[0.95rem] text-[var(--light-text-muted)]">Dashboard</span>
+        </a>
+        <a class="flex items-center gap-4 px-4 py-3.5 neu-nav-item rounded-xl" href="submit-issue.html">
+          <span class="material-symbols-outlined">add_circle</span>
+          <span class="font-bold text-[0.95rem] text-[var(--light-text-muted)]">Submit Feedback</span>
+        </a>
+        <a class="flex items-center gap-4 px-4 py-3.5 neu-nav-item rounded-xl" href="my-issues.html">
+          <span class="material-symbols-outlined">forum</span>
+          <span class="font-bold text-[0.95rem] text-[var(--light-text-muted)]">My Submissions</span>
+        </a>
+        <a class="flex items-center gap-4 px-4 py-3.5 neu-nav-active rounded-xl relative" href="active-polls.html">
+          <span class="material-symbols-outlined">how_to_vote</span>
+          <span class="font-bold text-[0.95rem]">Active Polls</span>
+          <span id="polls-badge" class="ml-auto bg-indigo-100 text-[var(--light-accent)] shadow-sm text-xs font-bold px-2 py-0.5 rounded-full hidden">0</span>
+        </a>
+        <a class="flex items-center gap-4 px-4 py-3.5 neu-nav-item rounded-xl" href="profile.html">
+          <span class="material-symbols-outlined">badge</span>
+          <span class="font-bold text-[0.95rem] text-[var(--light-text-muted)]">My Profile</span>
+        </a>
+      </div>
+    </div>
+    <div class="p-6 flex flex-col gap-2 border-t border-[var(--light-border)]">
+      <button onclick="handleLogout()" class="flex items-center gap-4 px-4 py-3 neu-nav-item rounded-xl text-red-500 hover:text-red-600 hover:bg-red-50 transition-all w-full mt-2">
+        <span class="material-symbols-outlined">logout</span>
+        <span class="font-bold text-[0.95rem]">Sign Out</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ─── Main ─── -->
+  <main class="flex-1 h-full overflow-y-auto relative w-full">
+    <div class="absolute top-0 right-0 w-[500px] h-[500px] rounded-full pointer-events-none -translate-y-1/2 translate-x-1/3 opacity-30" style="background:radial-gradient(circle,rgba(99,102,241,0.15) 0%,transparent 70%)"></div>
+    <div class="absolute bottom-0 left-0 w-[400px] h-[400px] rounded-full pointer-events-none translate-y-1/3 -translate-x-1/3 opacity-20" style="background:radial-gradient(circle,rgba(139,92,246,0.15) 0%,transparent 70%)"></div>
+
+    <div class="max-w-4xl mx-auto px-5 py-8 pb-32 md:pb-12 md:px-10 lg:px-12 flex flex-col h-full relative z-10 w-full">
+      
+      <!-- Header -->
+      <header class="mb-10 flex flex-col sm:flex-row justify-between sm:items-end gap-6 animate-slide-up">
+        <div class="flex flex-col">
+          <h2 class="text-3xl md:text-4xl font-extrabold text-[var(--light-text)] tracking-tight">Active Polls</h2>
+          <p id="page-subtitle" class="text-[var(--light-text-muted)] text-base font-medium mt-1 font-body">Looking for active polls…</p>
+        </div>
+      </header>
+
+      <!-- Global alert -->
+      <div id="global-alert" class="hidden rounded-xl px-4 py-3 text-sm font-medium mb-6 flex items-center gap-2 shadow-sm font-body"></div>
+
+      <!-- Polls Feed -->
+      <div id="polls-container" class="space-y-8 animate-slide-up" style="animation-delay: 0.1s;">
+        <!-- Skeletons (Initial load only) -->
+        <div class="space-y-8" id="initial-skeletons">
+          <div class="bg-white border border-[var(--light-border)] rounded-3xl p-8 shadow-sm"><div class="skeleton" style="height:160px;width:100%;"></div></div>
+          <div class="bg-white border border-[var(--light-border)] rounded-3xl p-8 shadow-sm"><div class="skeleton" style="height:160px;width:100%;"></div></div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ─── Mobile Bottom Nav ─── -->
+  <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-[var(--light-border)] flex justify-around items-center h-[72px] px-2 z-50 pb-safe shadow-[0_-4px_24px_rgba(0,0,0,0.04)]">
+    <a href="dashboard.html" class="flex flex-col items-center justify-center w-16 h-full text-[var(--light-text-light)] hover:text-[var(--light-text)] transition-colors">
+      <span class="material-symbols-outlined text-2xl mb-1">space_dashboard</span>
+      <span class="text-[10px] font-bold">Home</span>
+    </a>
+    <a href="submit-issue.html" class="flex flex-col items-center justify-center w-16 h-full text-[var(--light-text-light)] hover:text-[var(--light-text)] transition-colors">
+      <span class="material-symbols-outlined text-2xl mb-1">add_circle</span>
+      <span class="text-[10px] font-bold">Submit</span>
+    </a>
+    <a href="my-issues.html" class="flex flex-col items-center justify-center w-16 h-full text-[var(--light-text-light)] hover:text-[var(--light-text)] transition-colors">
+      <span class="material-symbols-outlined text-2xl mb-1">forum</span>
+      <span class="text-[10px] font-bold">Feedback</span>
+    </a>
+    <a href="active-polls.html" class="flex flex-col items-center justify-center w-16 h-full text-[var(--light-accent)] relative">
+      <div class="absolute -top-3 w-10 h-1 rounded-full bg-[var(--light-accent)]"></div>
+      <span class="material-symbols-outlined text-2xl mb-1" style="font-variation-settings:'FILL' 1">how_to_vote</span>
+      <span class="text-[10px] font-bold">Polls</span>
+      <span id="polls-mobile-badge" class="absolute top-2 right-2 w-4 h-4 bg-red-500 text-white text-[9px] font-bold flex items-center justify-center rounded-full shadow-sm hidden">0</span>
+    </a>
+    <a href="profile.html" class="flex flex-col items-center justify-center w-16 h-full text-[var(--light-text-light)] hover:text-[var(--light-text)] transition-colors">
+      <span class="material-symbols-outlined text-2xl mb-1">person</span>
+      <span class="text-[10px] font-bold">Profile</span>
+    </a>
+  </nav>
+</div>
+
+<script>
+  const db = firebase.firestore();
+  let currentUser = null;
+  let currentRole = 'USER';
+  let userVotes = {};
+  let unsubscribePolls = null;
+  const pollOptionsListeners = {}; // Stores unsubscribes for options by pollId
+  const pollsDataCache = {}; // Stores latest options data
+
+  firebase.auth().onAuthStateChanged(async user => {
+    if (!user) { window.location.href = 'index.html'; return; }
+    currentUser = user;
+
+    const name = user.displayName || user.email.split('@')[0];
+    document.getElementById('user-name-sidebar').textContent = name;
+
+    const userDoc = await db.collection('users').doc(user.uid).get();
+    if (userDoc.exists) {
+      currentRole = userDoc.data().role || 'USER';
+      
+      if (currentRole === 'ADMIN' || currentRole === 'AUTHORITY') {
+        window.location.href = 'admin.html';
+        return;
+      }
+      const roleText = currentRole === 'USER' ? 'Customer' : currentRole;
+      const avatarEl = document.getElementById('user-avatar');
+      if (userDoc.data().avatarUrl) {
+        avatarEl.innerHTML = `<img src="${userDoc.data().avatarUrl}" alt="Avatar" class="w-full h-full object-cover rounded-full"/>`;
+      } else {
+        avatarEl.innerHTML = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+      }
+      saveSidebarCache(name, roleText, userDoc.data().avatarUrl || null, currentUser.email);
+    } else {
+      document.getElementById('user-avatar').innerHTML = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    }
+    
+    // Load existing votes by this user dynamically
+    db.collection('pollVotes').where('userId','==',user.uid).onSnapshot(votesSnap => {
+      userVotes = {};
+      votesSnap.forEach(d => { userVotes[d.data().pollId] = d.data().optionId; });
+      if (unsubscribePolls) renderPollsUI(); // Re-render if polls are already loaded
+    }, err => {
+      console.error("PollVotes Listener Error:", err);
+      // Fallback: don't crash the renderer
+      userVotes = {};
+    });
+
+    listenToPolls();
+  });
+
+  function listenToPolls() {
+    unsubscribePolls = db.collection('polls').where('isActive','==',true).orderBy('createdAt','desc').onSnapshot(snap => {
+      pollsDataCache.snapshot = snap;
+
+      const badge = document.getElementById('polls-badge');
+      if (snap.size > 0) {
+        badge.textContent = snap.size;
+        badge.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+      }
+
+      const activePollIds = new Set(snap.docs.map(d => d.id));
+      
+      // Cleanup old listeners
+      Object.keys(pollOptionsListeners).forEach(id => {
+        if (!activePollIds.has(id)) {
+          pollOptionsListeners[id]();
+          delete pollOptionsListeners[id];
+          delete pollsDataCache[id];
+        }
+      });
+
+      // Track how many options collections we're waiting for
+      let pendingOptions = 0;
+
+      if (snap.empty) {
+        renderPollsUI();
+      } else {
+        snap.docs.forEach(doc => {
+          if (!pollOptionsListeners[doc.id]) {
+            pendingOptions++;
+            pollOptionsListeners[doc.id] = doc.ref.collection('options').onSnapshot(optsSnap => {
+              const opts = optsSnap.docs.map(o => ({ id: o.id, ...o.data() }));
+              // Fail-safe ordering: createdAt (server) -> index (defined) -> text
+              opts.sort((a, b) => {
+                if (a.createdAt && b.createdAt) return a.createdAt.toMillis() - b.createdAt.toMillis();
+                if (a.index !== undefined && b.index !== undefined) return a.index - b.index;
+                return a.text.localeCompare(b.text);
+              });
+              pollsDataCache[doc.id] = opts;
+              if (pendingOptions > 0) {
+                pendingOptions--;
+                if (pendingOptions === 0) renderPollsUI();
+              } else {
+                renderPollsUI(); // Subsequent real-time update
+              }
+            }, err => {
+              console.error("Option Listener Error for", doc.id, err);
+              pollsDataCache[doc.id] = [];
+              if (pendingOptions > 0) { pendingOptions--; if (pendingOptions===0) renderPollsUI(); }
+            });
+          }
+        });
+        if (pendingOptions === 0) renderPollsUI(); // If all were already listening
+      }
+    }, err => {
+      console.error("Poll Listener Error:", err);
+      // Failsafe for missing composite index during deep query
+      document.getElementById('polls-container').innerHTML = `<div class="text-center py-16 text-red-500 font-bold bg-red-50 rounded-3xl border border-red-100">Failed to load real-time polls.<br/>The database indices may be building. Please wait a few minutes.</div>`;
+    });
+  }
+
+  function renderPollsUI() {
+    const container = document.getElementById('polls-container');
+    const snap = pollsDataCache.snapshot;
+    if (!snap) return;
+
+    if (snap.empty) {
+      document.getElementById('page-subtitle').textContent = 'No active polls at the moment. Check back later!';
+      container.innerHTML = `<div class="bg-white border border-[var(--light-border)] rounded-3xl p-12 text-center flex flex-col items-center shadow-sm">
+        <div class="w-20 h-20 rounded-full bg-slate-50 border border-slate-100 text-slate-600 flex items-center justify-center mb-6">
+          <span class="material-symbols-outlined text-4xl">inventory_2</span>
+        </div>
+        <h3 class="text-2xl font-extrabold text-[var(--light-text)] mb-2">No active polls right now</h3>
+        <p class="text-[var(--light-text-muted)] font-body text-sm max-w-sm mx-auto">When new polls are created, they'll appear here seamlessly.</p>
+        ${currentRole === 'ADMIN' ? `<button onclick="showCreateModal()" class="mt-8 bg-[var(--light-accent)] text-white hover:bg-indigo-600 px-8 py-3 rounded-xl font-bold transition-all shadow-md shadow-indigo-200">Create First Poll</button>` : ''}
+      </div>`;
+      return;
+    }
+
+    const isElevatedGlobal = currentRole !== 'USER';
+    const validSnapDocs = isElevatedGlobal ? snap.docs : snap.docs.filter(d => (pollsDataCache[d.id] && pollsDataCache[d.id].length > 0));
+    const unvoted = validSnapDocs.filter(d => !userVotes[d.id]).length;
+    
+    document.getElementById('page-subtitle').textContent =
+      isElevatedGlobal ? `${snap.size} active poll${snap.size!==1?'s':''} across the workspace.`
+      : unvoted > 0 ? `You have ${unvoted} poll${unvoted!==1?'s':''} waiting for your vote.`
+      : `You've caught up on all ${validSnapDocs.length} active poll${validSnapDocs.length!==1?'s':''}. Great job!`;
+
+    // Render cards into feed
+    let html = '';
+    for (const doc of snap.docs) {
+      const p = doc.data();
+      const options = pollsDataCache[doc.id] || [];
+      const alreadyVoted = !!userVotes[doc.id];
+      const totalVotes = options.reduce((s, o) => s + (o.votes || 0), 0);
+      const isElevated = currentRole !== 'USER';
+
+      // Time since creation
+      const created = p.createdAt ? new Date(p.createdAt.toDate()) : new Date();
+      const daysAgo = Math.floor((Date.now() - created) / 86400000);
+      let timeLabel = daysAgo === 0 ? 'Today' : daysAgo === 1 ? 'Yesterday' : `${daysAgo}d ago`;
+
+      // Hide empty polls from non-admins
+      if (!isElevated && options.length === 0) continue;
+
+      if (isElevated) {
+        html += buildResultsCard(doc.id, p, options, totalVotes, timeLabel);
+      } else if (alreadyVoted) {
+        html += buildResultsCard(doc.id, p, options, totalVotes, timeLabel, userVotes[doc.id]);
+      } else {
+        html += buildVoteCard(doc.id, p, options, timeLabel);
+      }
+    }
+    if (html === '') {
+      document.getElementById('page-subtitle').textContent = 'No active polls at the moment. Check back later!';
+      html = `<div class="bg-white border border-[var(--light-border)] rounded-3xl p-12 text-center flex flex-col items-center shadow-sm">
+        <div class="w-20 h-20 rounded-full bg-slate-50 border border-slate-100 text-slate-600 flex items-center justify-center mb-6">
+          <span class="material-symbols-outlined text-4xl">inventory_2</span>
+        </div>
+        <h3 class="text-2xl font-extrabold text-[var(--light-text)] mb-2">No active polls right now</h3>
+        <p class="text-[var(--light-text-muted)] font-body text-sm max-w-sm mx-auto">When new polls are created, they'll appear here seamlessly.</p>
+        ${currentRole === 'ADMIN' ? `<a href="admin.html" class="mt-8 bg-[var(--light-accent)] text-white hover:bg-indigo-600 px-8 py-3 rounded-xl font-bold transition-all shadow-md shadow-indigo-200">Go to Admin Hub</a>` : ''}
+      </div>`;
+    }
+
+    // Smooth insertion check
+    const currentHTML = container.innerHTML;
+    if (currentHTML.includes('initial-skeletons')) {
+       container.innerHTML = html; // First load
+    } else {
+       // Deeply replace content without losing container wrapper to preserve layout flow
+       container.innerHTML = html;
+    }
+  }
+
+  function buildVoteCard(pollId, poll, options, timeLabel) {
+    if (options.length === 0) {
+      return `<article class="bg-white border border-red-100 rounded-3xl p-8 text-center shadow-sm mb-6 flex flex-col items-center">
+        <div class="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-4">
+          <span class="material-symbols-outlined text-3xl">warning</span>
+        </div>
+        <h3 class="text-xl font-bold text-[var(--light-text)] mb-2">${esc(poll.title)}</h3>
+        <p class="text-[var(--light-text-muted)] font-body text-sm">This poll has no voting options. It may need to be recreated.</p>
+      </article>`;
+    }
+
+    const optHtml = options.map((o, idx) => `
+      <label class="block relative p-5 rounded-2xl bg-white border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/30 cursor-pointer transition-all duration-200 group shadow-sm hover:shadow-md">
+        <div class="flex items-center gap-4">
+          <div class="relative flex items-center justify-center w-6 h-6 flex-shrink-0">
+            <input type="radio" name="poll_${pollId}" value="${o.id}" class="peer absolute opacity-0 w-full h-full cursor-pointer z-10">
+            <div class="w-5 h-5 rounded-full border-2 border-slate-300 peer-checked:border-[var(--light-accent)] peer-checked:bg-[var(--light-accent)] transition-all flex items-center justify-center group-hover:border-[var(--light-accent)]">
+              <div class="w-2 h-2 rounded-full bg-white opacity-0 peer-checked:opacity-100 transition-opacity"></div>
+            </div>
+          </div>
+          <span class="text-[15px] font-bold text-[var(--light-text)] group-hover:text-indigo-900 transition-colors flex-1">${esc(o.text)}</span>
+        </div>
+      </label>`).join('');
+
+    return `<article class="bg-white border border-[var(--light-border)] rounded-3xl p-6 sm:p-10 mb-8 max-w-2xl mx-auto shadow-sm transition-all hover:shadow-md">
+      <div>
+        <div class="flex items-start justify-between gap-4 mb-6">
+          <div class="flex-1 min-w-0">
+            <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100 text-[10px] font-bold uppercase tracking-widest mb-4">
+               <span class="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span> <span>Live Poll</span>
+               <span class="mx-1 text-indigo-300">•</span> <span class="text-indigo-500">${timeLabel}</span>
+            </div>
+            <h3 class="text-2xl sm:text-3xl font-extrabold text-[var(--light-text)] leading-tight">${esc(poll.title)}</h3>
+            ${poll.description ? `<p class="text-[var(--light-text-muted)] font-body text-sm mt-3 leading-relaxed">${esc(poll.description)}</p>` : ''}
+          </div>
+        </div>
+        <div class="space-y-3 mb-6 relative" id="options_${pollId}">
+          ${optHtml}
+          <!-- Loading overlay for options (hidden by default) -->
+          <div id="vote-overlay-${pollId}" class="absolute inset-0 bg-white/70 backdrop-blur-sm rounded-2xl flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-300 z-20">
+             <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg animate-bounce text-[var(--light-accent)] border border-indigo-100"><span class="material-symbols-outlined font-bold">how_to_vote</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="flex flex-col sm:flex-row items-center justify-between pt-6 border-t border-[var(--light-border)] gap-4 mt-2">
+        <span class="text-xs font-bold text-[var(--light-text-light)] uppercase tracking-widest bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-lg">${options.length} choices</span>
+        <button onclick="handleVoteClick('${pollId}')" class="w-full sm:w-auto px-8 py-3.5 bg-[var(--light-accent)] text-white hover:bg-indigo-600 font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-md shadow-indigo-200 hover:-translate-y-0.5">
+          Submit Vote <span class="material-symbols-outlined text-base font-bold">send</span>
+        </button>
+      </div>
+    </article>`;
+  }
+
+  function handleVoteClick(pollId) {
+     const selected = document.querySelector(`input[name="poll_${pollId}"]:checked`);
+     if (!selected) {
+        showAlert('Please select an option before voting.', 'error');
+        return;
+     }
+
+     // Visual rapid feedback
+     const overlay = document.getElementById(`vote-overlay-${pollId}`);
+     if (overlay) {
+        overlay.classList.remove('opacity-0', 'pointer-events-none');
+     }
+     
+     // Delegate vote casting to the hidden button logic
+     submitVoteDirectly(pollId, selected.value);
+  }
+
+  function buildResultsCard(pollId, poll, options, totalVotes, timeLabel, myVote = null) {
+    const isElevated = currentRole !== 'USER';
+    const totalV = totalVotes || 1; 
+    const maxVotes = Math.max(...options.map(o => o.votes || 0), 1); 
+
+    const optHtml = options.map(o => {
+      const votes = o.votes || 0;
+      const pct = totalVotes > 0 ? Math.round((votes / totalVotes) * 100) : 0;
+      const isMyVote = myVote === o.id;
+      const isWinner = totalVotes > 0 && votes === maxVotes;
+      
+      const barColorClass = isMyVote ? 'bg-emerald-500' : (isWinner ? 'bg-indigo-500' : 'bg-slate-300');
+      const textColClass  = isMyVote ? 'text-emerald-700' : (isWinner ? 'text-indigo-700' : 'text-slate-700');
+      const boxColClass = isMyVote ? 'border-emerald-200 bg-emerald-50/50' : (isWinner ? 'border-indigo-200 bg-indigo-50/50' : 'border-slate-100 bg-slate-50');
+
+      return `<div class="relative overflow-hidden rounded-2xl border ${boxColClass} p-5 group flex flex-col justify-center transition-all">
+        <!-- The Background Bar -->
+        <div class="${barColorClass} absolute left-0 top-0 bottom-0 opacity-10 transition-all duration-1000 ease-out rounded-r-2xl" style="width:${pct}%;"></div>
+        
+        <div class="relative z-10 flex items-center justify-between gap-4">
+          <span class="font-bold text-[15px] ${textColClass} flex items-center gap-2">
+            ${isMyVote ? '<span class="material-symbols-outlined text-lg">check_circle</span>' : ''}
+            ${esc(o.text)}
+          </span>
+          <div class="flex flex-col items-end">
+            <span class="text-slate-900 text-[16px] font-extrabold tracking-tight">${pct}%</span>
+            <span class="text-slate-500 text-[11px] font-bold tracking-widest uppercase">${votes} vote${votes!==1?'s':''}</span>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+
+    return `<article class="bg-white border border-[var(--light-border)] hover:border-slate-300 rounded-3xl p-6 sm:p-10 mb-8 max-w-2xl mx-auto flex flex-col relative shadow-sm transition-all hover:shadow-md">
+      <!-- Background subtle icon -->
+      <span class="material-symbols-outlined absolute right-6 bottom-6 text-9xl text-slate-50 pointer-events-none transform -rotate-12 z-0" style="font-variation-settings: 'FILL' 1;">analytics</span>
+      
+      <div class="relative z-10">
+        <div class="flex items-start justify-between gap-4 mb-6">
+          <div class="flex-1 min-w-0">
+            <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full ${myVote ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-50 text-slate-500 border-slate-200'} border text-[10px] font-bold uppercase tracking-widest mb-4 shadow-sm">
+              <span class="material-symbols-outlined text-[14px]">${myVote ? 'task_alt' : 'poll'}</span>
+              <span>${myVote ? 'Voted' : 'Active'}</span>
+              <span class="mx-1 opacity-50">•</span> <span>${timeLabel}</span>
+            </div>
+            <h3 class="text-2xl sm:text-3xl font-extrabold text-[var(--light-text)] leading-tight">${esc(poll.title)}</h3>
+            ${poll.description ? `<p class="text-[var(--light-text-muted)] font-body text-sm mt-3 leading-relaxed">${esc(poll.description)}</p>` : ''}
+          </div>
+        </div>
+        
+        <div class="space-y-3 mb-6 mt-4">
+          ${optHtml}
+        </div>
+        
+        <div class="flex items-center justify-between pt-6 border-t border-[var(--light-border)] mt-2">
+           <span class="text-xs font-bold text-[var(--light-text-light)] uppercase tracking-widest bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-lg">${totalVotes} total votes</span>
+        </div>
+      </div>
+      
+    </article>`;
+  }
+
+  async function submitVoteDirectly(pollId, optionId) {
+    if (!currentUser) return;
+    try {
+      const voteId = `${currentUser.uid}_${pollId}`;
+      await db.collection("pollVotes").doc(voteId).set({
+        pollId: pollId,
+        optionId: optionId,
+        userId: currentUser.uid,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      showAlert('Vote successfully recorded! 🎉', 'success');
+    } catch (e) {
+      console.error(e);
+      showAlert('Failed to submit vote. Please try again.', 'error');
+      const overlay = document.getElementById(`vote-overlay-${pollId}`);
+      if (overlay) overlay.classList.add('opacity-0', 'pointer-events-none');
+    }
+  }
+
+  async function handleLogout() { clearSidebarCache(); await firebase.auth().signOut(); window.location.href = 'index.html'; }
+
+  function showAlert(msg, type = 'error') {
+    const el = document.getElementById('global-alert');
+    el.className = `rounded-xl px-4 py-3 text-sm font-medium mb-6 flex items-center gap-2 font-body shadow-sm ${type === 'error' ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-emerald-50 text-emerald-600 border border-emerald-200'}`;
+    el.innerHTML = `<span class="material-symbols-outlined text-base">${type === 'error' ? 'error' : 'check_circle'}</span>${msg}`;
+    el.classList.remove('hidden');
+    setTimeout(() => el.classList.add('hidden'), 5000);
+  }
+  function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+  async function updatePollsBadge() {
+    try {
+      const snap = await db.collection('polls').where('isActive', '==', true).get();
+      const badge = document.getElementById('polls-badge');
+      const mobileBadge = document.getElementById('polls-mobile-badge');
+      if (snap.size > 0) {
+        if (badge) { badge.textContent = snap.size; badge.classList.remove('hidden'); }
+        if (mobileBadge) { mobileBadge.textContent = snap.size; mobileBadge.classList.remove('hidden'); }
+      } else {
+        if (badge) badge.classList.add('hidden');
+        if (mobileBadge) mobileBadge.classList.add('hidden');
+      }
+    } catch (e) {
+      console.error("Error updating polls badge:", e);
+    }
+  }
+</script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch(err => {
+        console.log('SW registration failed: ', err);
+      });
+    });
+  }
+</script>
+</body>
+</html>

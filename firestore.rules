@@ -1,0 +1,67 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helper functions ──────────────────────────────────────
+    function isAuthenticated() { return request.auth != null; }
+    function isOwner(userId)   { return isAuthenticated() && request.auth.uid == userId; }
+    function getUserRole()     { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role; }
+    function isAdmin()         { return isAuthenticated() && getUserRole() == 'ADMIN'; }
+    function isAuthority()     { return isAuthenticated() && getUserRole() == 'AUTHORITY'; }
+    function isElevated()      { return isAdmin() || isAuthority(); }
+
+    // ── users ─────────────────────────────────────────────────
+    match /users/{userId} {
+      allow read:   if isAuthenticated();
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if false;
+    }
+
+    // ── issues ────────────────────────────────────────────────
+    match /issues/{issueId} {
+      allow read:  if isElevated() || isOwner(resource.data.userId);
+      // Users can create issues attached to their own ID. Admin/Authority can update status/remarks.
+      allow create: if isOwner(request.resource.data.userId);
+      allow update: if isElevated();
+      allow delete: if false; 
+    }
+
+    // ── polls & sub-collection options ────────────────────────
+    match /polls/{pollId} {
+      allow read:  if isAuthenticated();
+      allow create, update: if isAdmin();
+      allow delete:  if isAuthenticated(); // TEMPORARY: Allow anyone to delete broken polls
+
+      match /options/{optionId} {
+        allow read:  if isAuthenticated();
+        allow create: if isAdmin();
+        allow update, delete: if false;
+      }
+    }
+
+    match /pollVotes/{voteId} {
+      allow read:  if isElevated() || isOwner(resource.data.userId);
+      // Deterministic ID: userId_pollId. Create only if user matches. 
+      // Update/Delete forbidden to ensure "One Vote" rule.
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if false; 
+    }
+
+    // ── documents (secure file references) ────────────────────
+    match /documents/{docId} {
+      allow read:  if isElevated() || isOwner(resource.data.userId);
+      // Users can create document records attached to their own ID
+      allow create: if isOwner(request.resource.data.userId);
+      allow update, delete: if false;
+    }
+
+    // ── auditLogs ─────────────────────────────────────────────
+    match /auditLogs/{logId} {
+      allow read:  if isElevated() || (isAuthenticated() && get(/databases/$(database)/documents/issues/$(resource.data.metadata.issueId)).data.userId == request.auth.uid);
+      // Users can append audit logs for their own actions
+      allow create: if isOwner(request.resource.data.performedBy) || isElevated();
+      allow update, delete: if false;
+    }
+  }
+}

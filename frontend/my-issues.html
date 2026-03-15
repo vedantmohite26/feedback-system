@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>My Submissions - Feedback Portal</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<script src="js/firebase-config.js"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: { primary: "#6366f1" },
+        fontFamily: { "display": ["Outfit", "sans-serif"], "body": ["Inter", "sans-serif"] },
+      },
+    },
+  }
+</script>
+<style>
+    body { font-family: 'Outfit', sans-serif; background: var(--gradient-body); color: var(--light-text); min-height: 100dvh; overflow: hidden; }
+    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    
+    .spinner { display:inline-block;width:24px;height:24px;border:3px solid rgba(99,102,241,0.2);border-top-color:#6366f1;border-radius:50%;animation:spin 1s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.2); }
+
+  .skeleton {
+    background: linear-gradient(90deg, #f0f4f8 25%, #e2e8f0 50%, #f0f4f8 75%);
+    background-size: 200% 100%;
+    animation: placeholderShimmer 1.5s infinite;
+    border-radius: 8px;
+  }
+  @keyframes placeholderShimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+</style>
+<link rel="stylesheet" href="css/neumorphism.css"/>
+<script src="js/sidebar-cache.js"></script>
+</head>
+<body class="antialiased flex h-[100dvh] w-full">
+
+  <!-- ─── Sidebar Navigation ─── -->
+  <nav class="hidden md:flex w-72 flex-col justify-between h-full relative z-20 neu-sidebar border-r border-[var(--light-border)]">
+    <div class="p-8">
+      <div class="flex items-center gap-3 mb-8 px-1 py-1 text-left">
+        <div id="user-avatar" class="flex-shrink-0 h-11 w-11 bg-[var(--light-accent)] text-white rounded-full flex items-center justify-center text-sm font-bold shadow-inner overflow-hidden border border-[var(--light-border)]">
+          <span class="spinner w-5 h-5 border-white border-t-transparent border-2"></span>
+        </div>
+        <div class="flex flex-col min-w-0 flex-1">
+          <p id="user-name-sidebar" class="text-[0.95rem] font-bold truncate text-[var(--light-text)] leading-tight">Loading…</p>
+          <p id="user-email-sidebar" class="text-[0.75rem] font-medium text-[var(--light-text-muted)] truncate leading-tight"></p>
+        </div>
+      </div>
+      <div class="flex flex-col gap-2">
+        <a class="flex items-center gap-4 px-4 py-3.5 neu-nav-item rounded-xl" href="dashboard.html">
+          <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1">space_dashboard</span>
+          <span class="font-bold text-[0.95rem] text-[var(--light-text-muted)]">Dashboard</span>
+        </a>
+        <a class="flex items-center gap-4 px-4 py-3.5 neu-nav-item rounded-xl" href="submit-issue.html">
+          <span class="material-symbols-outlined">add_circle</span>
+          <span class="font-bold text-[0.95rem] text-[var(--light-text-muted)]">Submit Feedback</span>
+        </a>
+        <a class="flex items-center gap-4 px-4 py-3.5 neu-nav-active rounded-xl" href="my-issues.html">
+          <span class="material-symbols-outlined">forum</span>
+          <span class="font-bold text-[0.95rem]">My Submissions</span>
+        </a>
+        <a class="flex items-center gap-4 px-4 py-3.5 neu-nav-item rounded-xl relative" href="active-polls.html">
+          <span class="material-symbols-outlined">how_to_vote</span>
+          <span class="font-bold text-[0.95rem] text-[var(--light-text-muted)]">Active Polls</span>
+          <span id="polls-badge" class="ml-auto bg-indigo-100 text-[var(--light-accent)] shadow-sm text-xs font-bold px-2 py-0.5 rounded-full hidden">0</span>
+        </a>
+        <a class="flex items-center gap-4 px-4 py-3.5 neu-nav-item rounded-xl" href="profile.html">
+          <span class="material-symbols-outlined">badge</span>
+          <span class="font-bold text-[0.95rem] text-[var(--light-text-muted)]">My Profile</span>
+        </a>
+      </div>
+    </div>
+    <div class="p-6 flex flex-col gap-2 border-t border-[var(--light-border)]">
+      <button onclick="handleLogout()" class="flex items-center gap-4 px-4 py-3 neu-nav-item rounded-xl text-red-500 hover:text-red-600 hover:bg-red-50 transition-all w-full mt-2">
+        <span class="material-symbols-outlined">logout</span>
+        <span class="font-bold text-[0.95rem]">Sign Out</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ─── Main Content ─── -->
+  <main class="flex-1 h-full overflow-y-auto relative w-full">
+    <div class="absolute top-0 right-0 w-[500px] h-[500px] rounded-full pointer-events-none -translate-y-1/2 translate-x-1/3 opacity-30" style="background:radial-gradient(circle,rgba(99,102,241,0.15) 0%,transparent 70%)"></div>
+    <div class="absolute bottom-0 left-0 w-[400px] h-[400px] rounded-full pointer-events-none translate-y-1/3 -translate-x-1/3 opacity-20" style="background:radial-gradient(circle,rgba(139,92,246,0.15) 0%,transparent 70%)"></div>
+
+    <div class="max-w-6xl mx-auto px-5 py-8 pb-24 md:pb-12 md:px-10 lg:px-12 flex flex-col h-full relative z-10 w-full">
+      <header class="mb-8 flex flex-col sm:flex-row justify-between sm:items-end gap-6 animate-slide-up">
+        <div class="flex flex-col">
+          <h2 id="page-heading" class="text-3xl md:text-4xl font-extrabold text-[var(--light-text)] tracking-tight">Feedback & Issues</h2>
+          <p class="text-[var(--light-text-muted)] text-base font-medium mt-1 font-body">Manage and track your submitted feedback and reports.</p>
+        </div>
+      </header>
+
+      <!-- Submissions Panel -->
+      <div class="bg-white border border-[var(--light-border)] rounded-3xl shadow-sm overflow-hidden animate-slide-up flex-1 flex flex-col" style="animation-delay: 0.1s;">
+
+        <!-- Toolbar (Search & Filters) -->
+        <div class="p-5 border-b border-[var(--light-border)] bg-slate-50/50 flex flex-col md:flex-row gap-4 lg:items-center">
+            
+          <!-- Search -->
+          <div class="relative flex-1 md:max-w-md">
+            <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[var(--light-text-light)]">search</span>
+            <input id="search-input" oninput="applyFilters()" class="w-full h-12 pl-12 pr-4 bg-white border border-slate-200 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 rounded-xl text-[var(--light-text)] font-body placeholder:text-slate-500 outline-none transition-all shadow-sm" placeholder="Search description or category..." type="text"/>
+          </div>
+
+          <!-- Status dropdown -->
+          <div class="relative w-full md:w-48">
+            <select id="filter-status" onchange="applyFilters()" class="w-full h-12 appearance-none pl-4 pr-10 bg-white border border-slate-200 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 rounded-xl text-sm font-bold text-[var(--light-text)] outline-none cursor-pointer transition-all shadow-sm">
+                <option value="ALL">All Status</option>
+                <option value="PENDING">Pending</option>
+                <option value="IN_PROGRESS">In Progress</option>
+                <option value="RESOLVED">Resolved</option>
+                <option value="REJECTED">Rejected</option>
+            </select>
+            <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none">expand_content</span>
+          </div>
+
+          <!-- Category dropdown -->
+          <div class="relative w-full md:w-56">
+            <select id="filter-category" onchange="applyFilters()" class="w-full h-12 appearance-none pl-4 pr-10 bg-white border border-slate-200 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 rounded-xl text-sm font-bold text-[var(--light-text)] outline-none cursor-pointer transition-all shadow-sm">
+              <option value="ALL">All Categories</option>
+            </select>
+            <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none">expand_content</span>
+          </div>
+          
+          <button onclick="clearFilters()" class="md:ml-auto text-sm font-bold text-indigo-600 hover:text-indigo-800 transition-colors whitespace-nowrap bg-indigo-50 px-4 py-2 rounded-lg hover:bg-indigo-100 flex items-center justify-center">Clear Filters</button>
+        </div>
+
+        <!-- Table Container -->
+        <div class="overflow-x-auto flex-1 relative">
+          <table class="w-full text-left border-collapse min-w-[800px]">
+            <thead class="bg-slate-50 sticky top-0 z-10 border-b border-slate-200 shadow-sm">
+              <tr class="text-[var(--light-text-light)] text-[10px] font-bold uppercase tracking-widest">
+                <th class="px-6 py-4 whitespace-nowrap">User</th>
+                <th class="px-6 py-4">Description</th>
+                <th class="px-6 py-4 whitespace-nowrap">Category</th>
+                <th class="px-6 py-4 whitespace-nowrap">Status</th>
+                <th class="px-6 py-4 whitespace-nowrap">Date</th>
+                <th class="px-6 py-4"></th>
+              </tr>
+            </thead>
+            <tbody id="issues-tbody" class="divide-y divide-slate-100">
+              <tr><td colspan="6" class="px-6 py-6"><div class="skeleton" style="height:20px;width:100%;"></div></td></tr>
+              <tr><td colspan="6" class="px-6 py-6"><div class="skeleton" style="height:20px;width:100%;"></div></td></tr>
+              <tr><td colspan="6" class="px-6 py-6"><div class="skeleton" style="height:20px;width:100%;"></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination Footer -->
+        <div class="p-4 border-t border-[var(--light-border)] bg-slate-50/50 flex flex-col md:flex-row items-center justify-between gap-4">
+          <span id="showing-text" class="text-xs font-bold text-[var(--light-text-light)] uppercase tracking-widest">Loading…</span>
+          <div id="pagination" class="flex gap-2"></div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ─── Mobile Bottom Nav ─── -->
+  <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-[var(--light-border)] flex justify-around items-center h-[72px] px-2 z-50 pb-safe shadow-[0_-4px_24px_rgba(0,0,0,0.04)]">
+    <a href="dashboard.html" class="flex flex-col items-center justify-center w-16 h-full text-[var(--light-text-light)] hover:text-[var(--light-text)] transition-colors">
+      <span class="material-symbols-outlined text-2xl mb-1">space_dashboard</span>
+      <span class="text-[10px] font-bold">Home</span>
+    </a>
+    <a href="submit-issue.html" class="flex flex-col items-center justify-center w-16 h-full text-[var(--light-text-light)] hover:text-[var(--light-text)] transition-colors">
+      <span class="material-symbols-outlined text-2xl mb-1">add_circle</span>
+      <span class="text-[10px] font-bold">Submit</span>
+    </a>
+    <a href="my-issues.html" class="flex flex-col items-center justify-center w-16 h-full text-[var(--light-accent)] relative">
+      <div class="absolute -top-3 w-10 h-1 rounded-full bg-[var(--light-accent)]"></div>
+      <span class="material-symbols-outlined text-2xl mb-1" style="font-variation-settings:'FILL' 1">forum</span>
+      <span class="text-[10px] font-bold">Feedback</span>
+    </a>
+    <a href="active-polls.html" class="flex flex-col items-center justify-center w-16 h-full text-[var(--light-text-light)] hover:text-[var(--light-text)] transition-colors relative">
+      <span class="material-symbols-outlined text-2xl mb-1">how_to_vote</span>
+      <span class="text-[10px] font-bold">Polls</span>
+      <span id="polls-mobile-badge" class="absolute top-2 right-2 w-4 h-4 bg-red-500 text-white text-[9px] font-bold flex items-center justify-center rounded-full shadow-sm hidden">0</span>
+    </a>
+    <a href="profile.html" class="flex flex-col items-center justify-center w-16 h-full text-[var(--light-text-light)] hover:text-[var(--light-text)] transition-colors">
+      <span class="material-symbols-outlined text-2xl mb-1">person</span>
+      <span class="text-[10px] font-bold">Profile</span>
+    </a>
+  </nav>
+
+</div>
+
+<script>
+  let currentUser = null;
+  let currentRole = 'USER';
+  let allIssues = [];
+  let userCache = {}; // Cache for user emails
+  let filteredIssues = [];
+  let currentPage = 1;
+  const PAGE_SIZE = 10;
+  const db = firebase.firestore();
+
+  firebase.auth().onAuthStateChanged(async user => {
+    if (!user) { window.location.href = 'index.html'; return; }
+    currentUser = user;
+    const name = user.displayName || user.email.split('@')[0];
+    const initials = name.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+    document.getElementById('user-name-sidebar').textContent = name;
+
+    const userDoc = await db.collection('users').doc(user.uid).get();
+    if (userDoc.exists) {
+      currentRole = userDoc.data().role || 'USER';
+      if (currentRole === 'ADMIN' || currentRole === 'AUTHORITY') {
+        window.location.href = 'admin.html';
+        return;
+      }
+      const roleText = currentRole === 'USER' ? 'Customer' : currentRole;
+      const avatarEl = document.getElementById('user-avatar');
+      if (userDoc.data().avatarUrl) {
+        avatarEl.innerHTML = `<img src="${userDoc.data().avatarUrl}" alt="Avatar" class="w-full h-full object-cover rounded-full"/>`;
+      } else {
+        avatarEl.innerHTML = initials;
+      }
+      saveSidebarCache(name, roleText, userDoc.data().avatarUrl || null, currentUser.email);
+    } else {
+      document.getElementById('user-avatar').innerHTML = initials;
+    }
+    loadAllIssues();
+    updatePollsBadge();
+  });
+
+  async function loadAllIssues() {
+    try {
+      const isElevated = currentRole !== 'USER';
+      let q = db.collection('issues').orderBy('createdAt', 'desc');
+      if (!isElevated) q = q.where('userId', '==', currentUser.uid);
+      const snap = await q.get();
+      
+      // Batch fetch users to get emails
+      const userIds = [...new Set(snap.docs.map(doc => doc.data().userId).filter(Boolean))];
+      const usersToFetch = userIds.filter(id => !userCache[id]);
+      
+      // Firestore 'in' query supports up to 10 items.
+      for (let i = 0; i < usersToFetch.length; i += 10) {
+        const batch = usersToFetch.slice(i, i + 10);
+        const usersSnap = await db.collection('users').where(firebase.firestore.FieldPath.documentId(), 'in', batch).get();
+        usersSnap.forEach(u => {
+          userCache[u.id] = u.data().email || 'Unknown Email';
+        });
+      }
+
+      allIssues = snap.docs.map((doc, i) => ({ id: doc.id, index: i + 1, ...doc.data() }));
+
+      // Populate category dropdown
+      const cats = [...new Set(allIssues.map(d => d.category).filter(Boolean))].sort();
+      const catSelect = document.getElementById('filter-category');
+      cats.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c; opt.textContent = c;
+        catSelect.appendChild(opt);
+      });
+
+      applyFilters();
+    } catch (e) {
+      console.error(e);
+      document.getElementById('issues-tbody').innerHTML = `<tr><td colspan="6" class="px-6 py-8 text-center text-red-500 text-sm font-bold bg-red-50">Failed to load submissions.</td></tr>`;
+      document.getElementById('showing-text').textContent = 'Error loading feedback';
+    }
+  }
+
+  function applyFilters() {
+    const search = document.getElementById('search-input').value.toLowerCase();
+    const status = document.getElementById('filter-status').value;
+    const category = document.getElementById('filter-category').value;
+
+    filteredIssues = allIssues.filter(d => {
+      const matchStatus = status === 'ALL' || d.status === status;
+      const matchCategory = category === 'ALL' || d.category === category;
+      const matchSearch = !search ||
+        (d.description || '').toLowerCase().includes(search) ||
+        (d.category || '').toLowerCase().includes(search) ||
+        (d.id || '').toLowerCase().includes(search);
+      return matchStatus && matchCategory && matchSearch;
+    });
+
+    currentPage = 1;
+    renderTable();
+    renderPagination();
+  }
+
+  function clearFilters() {
+    document.getElementById('search-input').value = '';
+    document.getElementById('filter-status').value = 'ALL';
+    document.getElementById('filter-category').value = 'ALL';
+    applyFilters();
+  }
+
+  function renderTable() {
+    const tbody = document.getElementById('issues-tbody');
+    const start = (currentPage - 1) * PAGE_SIZE;
+    const pageIssues = filteredIssues.slice(start, start + PAGE_SIZE);
+
+    document.getElementById('showing-text').textContent =
+      filteredIssues.length === 0
+        ? 'No feedback found'
+        : `Showing ${start + 1}-${Math.min(start + PAGE_SIZE, filteredIssues.length)} of ${filteredIssues.length}`;
+
+    if (pageIssues.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-20 text-center">
+        <div class="w-16 h-16 rounded-full mx-auto flex items-center justify-center mb-4 bg-slate-100 text-[var(--light-text-light)]">
+          <span class="material-symbols-outlined text-4xl block">${document.getElementById('search-input').value ? 'search_off' : 'inbox'}</span>
+        </div>
+        <p class="text-lg font-bold text-[var(--light-text)] mb-1">${document.getElementById('search-input').value ? 'No matching feedback' : 'No submissions yet'}</p>
+        <p class="text-sm text-[var(--light-text-muted)] font-body">${document.getElementById('search-input').value ? 'Try adjusting your search or filters.' : 'Submit your first feedback to see it here.'}</p>
+      </td></tr>`;
+      return;
+    }
+
+    const statusCfg = {
+      PENDING:     { badgeInfo: '<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 text-amber-600 border border-amber-200 text-xs font-bold leading-none"><span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>Pending</span>' },
+      IN_PROGRESS: { badgeInfo: '<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 text-blue-600 border border-blue-200 text-xs font-bold leading-none"><span class="w-2 h-2 rounded-full bg-blue-500"></span>In Progress</span>' },
+      RESOLVED:    { badgeInfo: '<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 text-xs font-bold leading-none"><span class="w-2 h-2 rounded-full bg-emerald-500"></span>Resolved</span>' },
+      REJECTED:    { badgeInfo: '<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-50 text-red-600 border border-red-200 text-xs font-bold leading-none"><span class="w-2 h-2 rounded-full bg-red-500"></span>Rejected</span>' },
+    };
+
+    tbody.innerHTML = pageIssues.map(d => {
+      const s = statusCfg[d.status] || statusCfg.PENDING;
+      const date = d.createdAt ? new Date(d.createdAt.toDate()).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }) : 'Just now';
+      const email = d.userId && userCache[d.userId] ? userCache[d.userId] : 'Unknown';
+      return `<tr class="hover:bg-slate-50 transition-colors cursor-pointer group" onclick="window.location.href='issue-detail.html?id=${d.id}'">
+        <td class="px-6 py-4">
+            <div class="flex items-center gap-2">
+                <div class="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-500">${email.charAt(0).toUpperCase()}</div>
+                <span class="font-body text-sm font-medium text-slate-600 truncate max-w-[120px]" title="${email}">${esc(email)}</span>
+            </div>
+        </td>
+        <td class="px-6 py-4 text-sm font-medium text-[var(--light-text)] max-w-sm truncate font-body">${esc(d.description)}</td>
+        <td class="px-6 py-4"><span class="bg-indigo-50 text-indigo-600 px-2 py-1 rounded border border-indigo-100 text-xs font-bold">${esc(d.category)}</span></td>
+        <td class="px-6 py-4">${s.badgeInfo}</td>
+        <td class="px-6 py-4 text-sm font-medium text-[var(--light-text-muted)] font-body whitespace-nowrap">${date}</td>
+        <td class="px-6 py-4 text-right">
+            <span class="material-symbols-outlined w-8 h-8 inline-flex items-center justify-center rounded-full text-slate-600 group-hover:text-[var(--light-accent)] group-hover:bg-indigo-50 transition-colors bg-white border border-transparent group-hover:border-indigo-100 shadow-sm align-middle">chevron_right</span>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  function renderPagination() {
+    const totalPages = Math.max(1, Math.ceil(filteredIssues.length / PAGE_SIZE));
+    const pag = document.getElementById('pagination');
+
+    if (totalPages <= 1) { pag.innerHTML = ''; return; }
+
+    let html = `<button onclick="goPage(${currentPage - 1})" class="w-10 h-10 flex items-center justify-center rounded-xl border border-[var(--light-border)] bg-white shadow-sm ${currentPage===1?'opacity-50 cursor-not-allowed text-slate-500':'hover:bg-slate-50 text-[var(--light-text)] hover:border-slate-300'} transition-all" ${currentPage===1?'disabled':''}>
+      <span class="material-symbols-outlined">chevron_left</span>
+    </button>`;
+
+    let startP = Math.max(1, currentPage - 2);
+    let endP = Math.min(totalPages, startP + 4);
+    if (endP - startP < 4) startP = Math.max(1, endP - 4);
+
+    for (let i = startP; i <= endP; i++) {
+      if (i === currentPage) {
+        html += `<button class="w-10 h-10 flex items-center justify-center rounded-xl bg-[var(--light-accent)] text-white font-bold shadow-md">${i}</button>`;
+      } else {
+        html += `<button onclick="goPage(${i})" class="w-10 h-10 flex items-center justify-center rounded-xl border border-[var(--light-border)] bg-white text-slate-600 font-bold hover:bg-slate-50 hover:border-slate-300 shadow-sm transition-all">${i}</button>`;
+      }
+    }
+
+    html += `<button onclick="goPage(${currentPage + 1})" class="w-10 h-10 flex items-center justify-center rounded-xl border border-[var(--light-border)] bg-white shadow-sm ${currentPage===totalPages?'opacity-50 cursor-not-allowed text-slate-500':'hover:bg-slate-50 text-[var(--light-text)] hover:border-slate-300'} transition-all" ${currentPage===totalPages?'disabled':''}>
+      <span class="material-symbols-outlined">chevron_right</span>
+    </button>`;
+
+    pag.innerHTML = html;
+  }
+
+  function goPage(p) {
+    const totalPages = Math.ceil(filteredIssues.length / PAGE_SIZE);
+    if (p < 1 || p > totalPages) return;
+    currentPage = p;
+    renderTable();
+    renderPagination();
+    // Scroll table into view
+    document.querySelector('.overflow-x-auto').scrollIntoView({ behavior:'smooth', block:'start' });
+  }
+
+  async function handleLogout() {
+    clearSidebarCache();
+    await firebase.auth().signOut();
+    window.location.href = 'index.html';
+  }
+
+  function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  async function updatePollsBadge() {
+    try {
+      const snap = await db.collection('polls').where('isActive', '==', true).get();
+      const badge = document.getElementById('polls-badge');
+      const mobileBadge = document.getElementById('polls-mobile-badge');
+      if (snap.size > 0) {
+        if (badge) { badge.textContent = snap.size; badge.classList.remove('hidden'); }
+        if (mobileBadge) { mobileBadge.textContent = snap.size; mobileBadge.classList.remove('hidden'); }
+      } else {
+        if (badge) badge.classList.add('hidden');
+        if (mobileBadge) mobileBadge.classList.add('hidden');
+      }
+    } catch (e) { console.error(e); }
+  }
+</script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch(err => {
+        console.log('SW registration failed: ', err);
+      });
+    });
+  }
+</script>
+</body>
+</html>

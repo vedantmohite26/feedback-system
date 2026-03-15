@@ -1,0 +1,13 @@
+{
+  "name": "feedback-system",
+  "version": "1.0.0",
+  "description": "Feedback and Polling System",
+  "main": "inject-env.js",
+  "scripts": {
+    "setup-env": "node inject-env.js",
+    "deploy": "node inject-env.js && firebase deploy --only hosting"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5"
+  }
+}

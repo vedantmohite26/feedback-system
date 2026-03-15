@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>My Profile - FeedbackPortal</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-functions.js"></script>
+<script src="js/firebase-config.js"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: { primary: "#6366f1" },
+        fontFamily: { "display": ["Outfit", "sans-serif"], "body": ["Inter", "sans-serif"] },
+      },
+    },
+  }
+</script>
+<style>
+    body { font-family: 'Outfit', sans-serif; background: var(--gradient-body); color: var(--light-text); min-height: 100dvh; overflow: hidden; }
+    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    
+    .spinner { display:inline-block;width:24px;height:24px;border:3px solid rgba(99,102,241,0.2);border-top-color:#6366f1;border-radius:50%;animation:spin 1s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.2); }
+
+    .avatar-upload { position: relative; max-width: 150px; margin: 0 auto; }
+    .avatar-edit { position: absolute; right: 0px; z-index: 1; top: 5px; }
+    .avatar-edit input { display: none; }
+    .avatar-edit label { display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; margin-bottom: 0; border-radius: 100%; cursor: pointer; transition: all .2s ease-in-out; }
+    .avatar-preview { width: 150px; height: 150px; position: relative; border-radius: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 4px solid white; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+    .avatar-preview > div, .avatar-preview > img { width: 100%; height: 100%; object-fit: cover; }
+</style>
+<link rel="stylesheet" href="css/neumorphism.css"/>
+<script src="js/sidebar-cache.js"></script>
+</head>
+<body class="antialiased flex h-[100dvh] w-full">
+
+  <!-- ─── Sidebar Navigation ─── -->
+  <nav class="hidden md:flex w-72 flex-col justify-between h-full relative z-20 neu-sidebar border-r border-[var(--light-border)]">
+    <div class="p-8">
+      <div class="flex items-center gap-3 mb-8 px-1 py-1 text-left relative">
+        <div id="user-avatar" class="flex-shrink-0 h-11 w-11 bg-[var(--light-accent)] text-white rounded-full flex items-center justify-center text-sm font-bold shadow-inner overflow-hidden border border-[var(--light-border)]">
+          <span class="spinner w-5 h-5 border-white border-t-transparent border-2"></span>
+        </div>
+        <div class="flex flex-col min-w-0 flex-1">
+          <p id="user-name-sidebar" class="text-[0.95rem] font-bold truncate text-[var(--light-text)] leading-tight">Loading…</p>
+          <p id="user-email-sidebar" class="text-[0.75rem] font-medium text-[var(--light-text-muted)] truncate leading-tight"></p>
+          <span id="user-role-sidebar" class="hidden">Customer</span>
+        </div>
+      </div>
+      <div class="flex flex-col gap-2" id="sidebar-links">
+        <a class="flex items-center gap-4 px-4 py-3.5 neu-nav-item rounded-xl" href="dashboard.html" id="nav-dashboard">
+          <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1">space_dashboard</span>
+          <span class="font-bold text-[0.95rem] text-[var(--light-text-muted)]">Dashboard</span>
+        </a>
+        <a class="flex items-center gap-4 px-4 py-3.5 neu-nav-item rounded-xl" href="submit-issue.html">
+          <span class="material-symbols-outlined">add_circle</span>
+          <span class="font-bold text-[0.95rem] text-[var(--light-text-muted)]">Submit Feedback</span>
+        </a>
+        <a class="flex items-center gap-4 px-4 py-3.5 neu-nav-item rounded-xl" href="my-issues.html">
+          <span class="material-symbols-outlined">forum</span>
+          <span class="font-bold text-[0.95rem] text-[var(--light-text-muted)]">My Submissions</span>
+        </a>
+        <a class="flex items-center gap-4 px-4 py-3.5 neu-nav-item rounded-xl relative" href="active-polls.html" id="nav-polls">
+          <span class="material-symbols-outlined">how_to_vote</span>
+          <span class="font-bold text-[0.95rem] text-[var(--light-text-muted)]">Active Polls</span>
+          <span id="polls-badge" class="ml-auto bg-indigo-100 text-[var(--light-accent)] shadow-sm text-xs font-bold px-2 py-0.5 rounded-full hidden">0</span>
+        </a>
+        <a class="flex items-center gap-4 px-4 py-3.5 neu-nav-active rounded-xl" href="profile.html" id="nav-profile">
+          <span class="material-symbols-outlined">badge</span>
+          <span class="font-bold text-[0.95rem]">My Profile</span>
+        </a>
+      </div>
+    </div>
+    <div class="p-6 flex flex-col gap-2 border-t border-[var(--light-border)]">
+      <button onclick="handleLogout()" class="flex items-center gap-4 px-4 py-3 neu-nav-item rounded-xl text-red-500 hover:text-red-600 hover:bg-red-50 transition-all w-full mt-2">
+        <span class="material-symbols-outlined">logout</span>
+        <span class="font-bold text-[0.95rem]">Sign Out</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ─── Main Content ─── -->
+  <main class="flex-1 h-full overflow-y-auto relative w-full">
+    <div class="absolute top-0 right-0 w-[500px] h-[500px] rounded-full pointer-events-none -translate-y-1/2 translate-x-1/3 opacity-30" style="background:radial-gradient(circle,rgba(99,102,241,0.15) 0%,transparent 70%)"></div>
+    <div class="absolute bottom-0 left-0 w-[400px] h-[400px] rounded-full pointer-events-none translate-y-1/3 -translate-x-1/3 opacity-20" style="background:radial-gradient(circle,rgba(139,92,246,0.15) 0%,transparent 70%)"></div>
+
+    <div class="max-w-4xl mx-auto px-5 py-8 pb-32 md:pb-12 md:px-10 lg:px-12 flex flex-col min-h-full relative z-10 w-full">
+      <header class="mb-10 flex flex-col pt-4 animate-slide-up">
+        <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white border border-[var(--light-border)] shadow-sm w-fit mb-4">
+          <span class="material-symbols-outlined text-[16px] text-[var(--light-text-muted)]">settings</span>
+          <span class="text-xs font-bold text-[var(--light-text-muted)] uppercase tracking-wider">Settings</span>
+        </div>
+        <h1 class="text-3xl md:text-4xl font-extrabold text-[var(--light-text)] tracking-tight leading-tight">
+          My Profile
+        </h1>
+        <p class="mt-2 text-[var(--light-text-muted)] text-base font-medium font-body">Update your personal details here.</p>
+      </header>
+
+      <div id="global-alert" class="hidden rounded-xl px-4 py-3 text-sm font-medium mb-6 font-body shadow-sm"></div>
+
+      <section class="bg-white border border-[var(--light-border)] rounded-3xl p-8 sm:p-10 shadow-sm animate-slide-up" style="animation-delay: 0.1s;">
+        <form id="profile-form" class="space-y-8">
+          
+          <div class="avatar-upload relative w-fit mx-auto group">
+            <div class="avatar-edit absolute -bottom-2 -right-2 z-10">
+                <input type='file' id="imageUpload" accept=".png, .jpg, .jpeg" />
+                <label for="imageUpload" class="bg-[var(--light-accent)] text-white p-2 rounded-full shadow-lg cursor-pointer hover:bg-indigo-600 transition-colors tooltip tooltip-right" data-tip="Change Photo">
+                    <span class="material-symbols-outlined text-[18px]">photo_camera</span>
+                </label>
+            </div>
+            <div class="avatar-preview bg-slate-50 relative group-hover:ring-4 ring-indigo-50 transition-all">
+                <div id="imagePreview" class="text-5xl font-bold text-slate-600 flex items-center justify-center">?</div>
+                <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-full pointer-events-none">
+                  <span class="material-symbols-outlined text-slate-800 text-3xl">edit</span>
+                </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
+            <div class="space-y-2">
+              <label for="fullName" class="block text-sm font-bold text-[var(--light-text)] ml-1">Full Name</label>
+              <div class="relative">
+                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <span class="material-symbols-outlined text-[var(--light-text-light)]">person</span>
+                </div>
+                <input id="fullName" type="text" required class="w-full bg-slate-50 border border-slate-200 pl-11 pr-4 py-3.5 rounded-xl focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 text-[var(--light-text)] font-medium placeholder-[var(--light-text-light)] transition-all outline-none font-body" placeholder="John Doe">
+              </div>
+            </div>
+            <div class="space-y-2">
+              <label for="phoneNumber" class="block text-sm font-bold text-[var(--light-text)] ml-1">Phone Number (Optional)</label>
+              <div class="relative">
+                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <span class="material-symbols-outlined text-[var(--light-text-light)]">call</span>
+                </div>
+                <input id="phoneNumber" type="tel" class="w-full bg-slate-50 border border-slate-200 pl-11 pr-4 py-3.5 rounded-xl focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 text-[var(--light-text)] font-medium placeholder-[var(--light-text-light)] transition-all outline-none font-body" placeholder="+1 555 000 0000">
+              </div>
+            </div>
+          </div>
+          
+          <div class="pt-6 mt-4 border-t border-[var(--light-border)] flex justify-end">
+            <button type="submit" id="saveBtn" class="bg-[var(--light-accent)] hover:bg-indigo-600 text-white font-bold px-8 py-3.5 rounded-xl flex items-center justify-center min-w-[160px] shadow-lg shadow-indigo-200 hover:-translate-y-0.5 transition-all outline-none focus:ring-4 ring-indigo-100">
+              Save Changes
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
+  </main>
+
+  <!-- ─── Mobile Bottom Nav ─── -->
+  <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-[var(--light-border)] flex justify-around items-center h-[72px] px-2 z-50 pb-safe shadow-[0_-4px_24px_rgba(0,0,0,0.04)]" id="mobile-nav-links">
+    <a href="dashboard.html" class="flex flex-col items-center justify-center w-16 h-full text-[var(--light-text-light)] hover:text-[var(--light-text)] transition-colors" id="mobile-nav-dashboard">
+      <span class="material-symbols-outlined text-2xl mb-1">space_dashboard</span>
+      <span class="text-[10px] font-bold">Home</span>
+    </a>
+    <a href="submit-issue.html" class="flex flex-col items-center justify-center w-16 h-full text-[var(--light-text-light)] hover:text-[var(--light-text)] transition-colors">
+      <span class="material-symbols-outlined text-2xl mb-1">add_circle</span>
+      <span class="text-[10px] font-bold">Submit</span>
+    </a>
+    <a href="my-issues.html" class="flex flex-col items-center justify-center w-16 h-full text-[var(--light-text-light)] hover:text-[var(--light-text)] transition-colors">
+      <span class="material-symbols-outlined text-2xl mb-1">forum</span>
+      <span class="text-[10px] font-bold">Feedback</span>
+    </a>
+    <a href="active-polls.html" class="flex flex-col items-center justify-center w-16 h-full text-[var(--light-text-light)] hover:text-[var(--light-text)] transition-colors relative" id="mobile-nav-polls">
+      <span class="material-symbols-outlined text-2xl mb-1">how_to_vote</span>
+      <span class="text-[10px] font-bold">Polls</span>
+      <span id="polls-mobile-badge" class="absolute top-2 right-2 w-4 h-4 bg-red-500 text-white text-[9px] font-bold flex items-center justify-center rounded-full shadow-sm hidden">0</span>
+    </a>
+    <a href="profile.html" class="flex flex-col items-center justify-center w-16 h-full text-[var(--light-accent)] relative" id="mobile-nav-profile">
+      <div class="absolute -top-3 w-10 h-1 rounded-full bg-[var(--light-accent)]"></div>
+      <span class="material-symbols-outlined text-2xl mb-1" style="font-variation-settings:'FILL' 1">badge</span>
+      <span class="text-[10px] font-bold">Profile</span>
+    </a>
+  </nav>
+
+</div>
+
+<script>
+  const db = firebase.firestore();
+  let currentUser = null;
+  let currentRole = 'USER';
+  let selectedFile = null;
+
+  function showAlert(msg, isError = false) {
+    const alert = document.getElementById('global-alert');
+    alert.textContent = msg;
+    alert.className = `rounded-xl px-4 py-3 text-sm font-medium mb-6 flex items-center shadow-sm font-body ${isError ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-emerald-50 text-emerald-600 border border-emerald-200'}`;
+    alert.classList.remove('hidden');
+    setTimeout(() => alert.classList.add('hidden'), 5000);
+  }
+
+  // Handle image selection preview
+  document.getElementById('imageUpload').addEventListener('change', function(e) {
+    if (e.target.files && e.target.files[0]) {
+        selectedFile = e.target.files[0];
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('imagePreview').innerHTML = `<img src="${e.target.result}" class="w-full h-full object-cover" />`;
+            document.getElementById('imagePreview').classList.remove('text-5xl', 'font-bold', 'text-slate-600');
+        }
+        reader.readAsDataURL(e.target.files[0]);
+    }
+  });
+
+  firebase.auth().onAuthStateChanged(async user => {
+    if (!user) { window.location.href = 'index.html'; return; }
+    currentUser = user;
+    const authName = user.displayName || user.email.split('@')[0];
+    document.getElementById('user-name-sidebar').textContent = authName;
+    document.getElementById('fullName').value = authName;
+
+    const userDoc = await db.collection('users').doc(user.uid).get();
+    if (userDoc.exists) {
+      const data = userDoc.data();
+      currentRole = data.role || 'USER';
+      const roleText = currentRole === 'USER' ? 'Customer' : currentRole;
+      document.getElementById('user-role-sidebar').textContent = roleText;
+
+      // Use Firestore name if available (overrides Auth displayName)
+      const displayName = data.name || authName;
+      document.getElementById('user-name-sidebar').textContent = displayName;
+      document.getElementById('fullName').value = displayName;
+      
+      const avatarEl = document.getElementById('user-avatar');
+      const previewEl = document.getElementById('imagePreview');
+      
+      if (data.avatarUrl) {
+          avatarEl.innerHTML = `<img src="${data.avatarUrl}" class="w-full h-full object-cover">`;
+          previewEl.innerHTML = `<img src="${data.avatarUrl}" class="w-full h-full object-cover"/>`;
+          previewEl.classList.remove('text-5xl', 'font-bold', 'text-slate-600');
+      } else {
+          const initials = displayName.slice(0, 2).toUpperCase();
+          avatarEl.textContent = initials;
+          previewEl.textContent = initials;
+          previewEl.classList.add('text-5xl', 'font-bold', 'text-slate-600');
+      }
+      
+      if (data.phone) {
+          document.getElementById('phoneNumber').value = data.phone;
+      }
+
+      if (currentRole === 'USER' || currentRole === 'Customer') {
+          document.getElementById('user-role-sidebar').textContent = roleText;
+      } else {
+          document.getElementById('user-role-sidebar').textContent = roleText;
+      }
+      saveSidebarCache(displayName, roleText, data.avatarUrl || null, currentUser.email);
+      
+      // Update nav links for admin
+      if (currentRole === 'ADMIN' || currentRole === 'AUTHORITY') {
+          // Adjust desktop sidebar
+          const sidebarLinks = document.getElementById('sidebar-links');
+          sidebarLinks.innerHTML = `
+            <a class="flex items-center gap-4 px-4 py-3.5 neu-nav-item rounded-xl" href="admin.html">
+              <span class="material-symbols-outlined">shield_person</span>
+              <span class="font-bold text-[0.95rem] text-[var(--light-text-muted)]">Admin Hub</span>
+            </a>
+            <a class="flex items-center gap-4 px-4 py-3.5 neu-nav-item rounded-xl" href="admin-polls.html">
+              <span class="material-symbols-outlined">ballot</span>
+              <span class="font-bold text-[0.95rem] text-[var(--light-text-muted)]">Manage Polls</span>
+            </a>
+            <a class="flex items-center gap-4 px-4 py-3.5 neu-nav-active rounded-xl" href="profile.html">
+              <span class="material-symbols-outlined">badge</span>
+              <span class="font-bold text-[0.95rem]">My Profile</span>
+            </a>
+          `;
+
+          // Adjust mobile nav
+          const mobileLinks = document.getElementById('mobile-nav-links');
+          mobileLinks.innerHTML = `
+            <a href="admin.html" class="flex flex-col items-center justify-center w-16 h-full text-[var(--light-text-light)] hover:text-[var(--light-text)] transition-colors">
+              <span class="material-symbols-outlined text-2xl mb-1">shield_person</span>
+              <span class="text-[10px] font-bold">Admin</span>
+            </a>
+            <a href="admin-polls.html" class="flex flex-col items-center justify-center w-16 h-full text-[var(--light-text-light)] hover:text-[var(--light-text)] transition-colors relative">
+              <span class="material-symbols-outlined text-2xl mb-1">ballot</span>
+              <span class="text-[10px] font-bold">Polls</span>
+            </a>
+            <a href="profile.html" class="flex flex-col items-center justify-center w-16 h-full text-[var(--light-accent)] relative">
+              <div class="absolute -top-3 w-10 h-1 rounded-full bg-[var(--light-accent)]"></div>
+              <span class="material-symbols-outlined text-2xl mb-1" style="font-variation-settings:'FILL' 1">badge</span>
+              <span class="text-[10px] font-bold">Profile</span>
+            </a>
+          `;
+      } else {
+        updatePollsBadge();
+      }
+    } else {
+        updatePollsBadge();
+    }
+  });
+
+  document.getElementById('profile-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!currentUser) return;
+    
+    const btn = document.getElementById('saveBtn');
+    const originalText = btn.innerHTML; // get original html content
+    btn.innerHTML = '<span class="material-symbols-outlined animate-spin mr-2">refresh</span>Saving...';
+    btn.disabled = true;
+    
+    try {
+        const newName = document.getElementById('fullName').value.trim();
+        const newPhone = document.getElementById('phoneNumber').value.trim();
+        // Get existing Cloudinary avatar from Firestore, not Auth photoURL
+        const existingDoc = await db.collection('users').doc(currentUser.uid).get();
+        let newPhotoUrl = (existingDoc.exists && existingDoc.data().avatarUrl) || currentUser.photoURL || null;
+        
+        // Handle upload if file selected
+        if (selectedFile) {
+            const fd = new FormData();
+            fd.append('file', selectedFile);
+            fd.append('upload_preset', 'ml_default');
+            fd.append('folder', `profile_photos/${currentUser.uid}`);
+            
+            const uploadRes = await fetch('https://api.cloudinary.com/v1_1/dba85njbc/image/upload', {
+                method: 'POST',
+                body: fd
+            });
+
+            if(!uploadRes.ok) {
+                throw new Error("Photo upload failed.");
+            }
+            
+            const cloudinaryData = await uploadRes.json();
+            newPhotoUrl = cloudinaryData.secure_url;
+        }
+        
+        // Update Auth
+        await currentUser.updateProfile({
+            displayName: newName,
+            photoURL: newPhotoUrl
+        });
+        
+        // Update Firestore
+        await db.collection('users').doc(currentUser.uid).set({
+            name: newName,
+            phone: newPhone,
+            avatarUrl: newPhotoUrl,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+        
+        // Update Sidebar visually
+        document.getElementById('user-name-sidebar').textContent = newName;
+        const avatarEl = document.getElementById('user-avatar');
+        if (newPhotoUrl) {
+            avatarEl.innerHTML = `<img src="${newPhotoUrl}" class="w-full h-full object-cover">`;
+        } else {
+            avatarEl.textContent = newName.slice(0, 2).toUpperCase();
+        }
+        
+        // Update Cache
+        saveSidebarCache(newName, document.getElementById('user-role-sidebar').textContent, newPhotoUrl, currentUser.email);
+        
+        showAlert('Profile updated successfully!');
+        selectedFile = null; // reset
+        
+    } catch (err) {
+        console.error("Error updating profile:", err);
+        showAlert('Failed to update profile: ' + err.message, true);
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+  });
+
+  async function updatePollsBadge() {
+    try {
+      if (currentRole === 'ADMIN' || currentRole === 'AUTHORITY') return; // no badge needed for admin here
+      const snap = await db.collection('polls').where('isActive', '==', true).get();
+      const badge = document.getElementById('polls-badge');
+      const mobileBadge = document.getElementById('polls-mobile-badge');
+      if (snap.size > 0) {
+        if (badge) { badge.textContent = snap.size; badge.classList.remove('hidden'); }
+        if (mobileBadge) { mobileBadge.textContent = snap.size; mobileBadge.classList.remove('hidden'); }
+      } else {
+        if (badge) badge.classList.add('hidden');
+        if (mobileBadge) mobileBadge.classList.add('hidden');
+      }
+    } catch (e) {
+      console.error("Error updating polls badge:", e);
+    }
+  }
+
+  // Re-define handleLogout just in case it is usually defined elsewhere globally, 
+  // but to be safe we can implement a basic one if it isn't linked correctly
+  function handleLogout() {
+      firebase.auth().signOut().then(() => {
+          localStorage.removeItem('sidebar_user_name');
+          localStorage.removeItem('sidebar_user_role');
+          localStorage.removeItem('sidebar_user_avatar');
+          window.location.href = 'index.html';
+      });
+  }
+</script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch(err => {
+        console.log('SW registration failed: ', err);
+      });
+    });
+  }
+</script>
+</body>
+</html>
